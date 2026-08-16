@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>惣菜仕込み計算チケット</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#faf8f2;
+    --card:#ffffff;
+    --ink:#242220;
+    --ink-soft:#6b6560;
+    --line:#d8d2c4;
+    --line-strong:#242220;
+    --green:#2f6b4f;
+    --green-soft:#e7f0ea;
+    --amber:#c97a2b;
+    --amber-soft:#fbeedd;
+    --red:#b3452f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(36,34,32,0.06) 1px, transparent 0);
+    background-size: 22px 22px;
+    color:var(--ink);
+    font-family:'Zen Kaku Gothic New', sans-serif;
+    padding: 28px 20px 80px;
+    min-height:100vh;
+  }
+  .wrap{ max-width: 1400px; margin: 0 auto; }
+
+  /* ---- Header ---- */
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:16px;
+    border-bottom: 3px solid var(--line-strong);
+    padding-bottom: 16px;
+    margin-bottom: 22px;
+  }
+  .brand{ display:flex; flex-direction:column; gap:4px; }
+  .ver-badge{
+    align-self:flex-start;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    font-weight:700;
+    color:#fff;
+    background:var(--green);
+    padding:2px 8px;
+    border-radius:20px;
+    letter-spacing:0.04em;
+  }
+  .brand .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing: 0.18em;
+    color: var(--ink-soft);
+    text-transform:uppercase;
+  }
+  .brand h1{
+    margin:0;
+    font-size: 30px;
+    font-weight:900;
+    letter-spacing: 0.02em;
+  }
+  .date-box{
+    display:flex; align-items:center; gap:10px;
+    background:var(--card);
+    border:2px solid var(--line-strong);
+    padding:10px 16px;
+    border-radius:2px;
+  }
+  .date-box label{ font-size:12px; color:var(--ink-soft); }
+  .date-box input[type=date]{
+    font-family:'JetBrains Mono', monospace;
+    font-size:18px; font-weight:700;
+    border:none; background:transparent; color:var(--ink);
+  }
+
+  /* ---- Settings strip ---- */
+  .settings{
+    display:grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap:1px;
+    background:var(--line-strong);
+    border:1px solid var(--line-strong);
+    margin-bottom: 26px;
+    font-size:13px;
+  }
+  .settings .cell{
+    background:var(--card);
+    padding:10px 12px;
+  }
+  .settings .cell .lbl{
+    color:var(--ink-soft);
+    font-size:11px;
+    margin-bottom:4px;
+    display:block;
+  }
+  .settings .cell input, .settings .cell select{
+    width:100%;
+    border:none;
+    background:transparent;
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    font-weight:700;
+    color:var(--ink);
+    padding:2px 0;
+  }
+  .settings .cell.special{ background: var(--amber-soft); }
+  .settings .cell.special .lbl{ color:#8a5518; }
+
+  /* ---- toolbar ---- */
+  .toolbar{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px; flex-wrap:wrap; gap:10px;
+  }
+  .toolbar .hint{ font-size:12px; color:var(--ink-soft); }
+  button.primary{
+    font-family:'Zen Kaku Gothic New', sans-serif;
+    font-weight:700;
+    background:var(--ink);
+    color:#fff;
+    border:none;
+    padding:10px 20px;
+    border-radius:2px;
+    cursor:pointer;
+    font-size:14px;
+    letter-spacing:0.03em;
+  }
+  button.primary:hover{ background:#000; }
+  button.primary.secondary{ background:#fff; color:var(--ink); border:2px solid var(--line-strong); }
+  button.primary.secondary:hover{ background:#f2efe6; }
+  .data-status{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    background:#f2efe6;
+    border:1px solid var(--line);
+    padding:5px 10px;
+    border-radius:2px;
+  }
+  .toolbar-right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+  /* ---- Load banner (読み込み結果・警告) ---- */
+  .load-banner{
+    display:none;
+    margin-bottom:14px;
+    padding:12px 16px;
+    border-radius:2px;
+    font-size:14px;
+    line-height:1.6;
+  }
+  .load-banner.show{ display:block; }
+  .load-banner.ok{ background:var(--green-soft); border:2px solid var(--green); color:#1f4a37; }
+  .load-banner.warn{ background:#FFFF00; border:4px solid #FF0000; color:#FF0000; font-weight:900; }
+  .load-banner.warn .lb-title{ color:#FF0000; font-size:17px; }
+  .load-banner .lb-title{ font-weight:700; font-size:15px; margin-bottom:4px; }
+  .load-banner .lb-line{ margin:2px 0; }
+  .load-banner ul{ margin:4px 0 0; padding-left:20px; }
+
+  /* ---- Grid of tickets ---- */
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+  }
+  @media (max-width: 1100px){ .grid{ grid-template-columns: repeat(2, 1fr);} }
+  @media (max-width: 620px){ .grid{ grid-template-columns: 1fr;} }
+
+  .ticket{
+    background:var(--card);
+    border:1.5px solid var(--line-strong);
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    box-shadow: 3px 3px 0 rgba(36,34,32,0.06);
+  }
+  .ticket .top{
+    padding: 12px 14px 10px;
+  }
+  .ticket .idx-row{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:8px;
+  }
+  .ticket .idx{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .badge-mini{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    font-weight:700;
+    background:var(--amber);
+    color:#fff;
+    padding:2px 7px;
+    border-radius:20px;
+    letter-spacing:0.03em;
+    display:none;
+  }
+  .ticket.is-mini .badge-mini{ display:inline-block; }
+  .ticket.is-mini{ border-color: var(--amber); }
+
+  .hinban-row{ display:flex; gap:8px; margin-bottom:8px; }
+  .hinban-row input{
+    flex:1;
+    font-family:'JetBrains Mono', monospace;
+    font-size:16px;
+    font-weight:700;
+    border:1px solid var(--line);
+    padding:6px 8px;
+    border-radius:2px;
+    width:100%;
+  }
+  .hinmei{
+    font-size:15px;
+    font-weight:700;
+    min-height: 20px;
+    margin-bottom:10px;
+    line-height:1.3;
+  }
+  .hinmei.empty{ color:#b8b2a6; font-weight:400; font-size:13px; }
+  .hinmei.not-found{ color:#fff; font-weight:700; font-size:13px; background:var(--red); padding:4px 8px; border-radius:2px; display:inline-block; }
+  .ticket.has-error{ border-color: var(--red); box-shadow: 3px 3px 0 rgba(179,69,47,0.18); }
+
+  .amounts{
+    display:grid;
+    grid-template-columns: repeat(3,1fr);
+    gap:6px;
+    margin-bottom:10px;
+  }
+  .amounts .a{
+    background:#f5f2ea;
+    border-radius:2px;
+    padding:6px 4px;
+    text-align:center;
+  }
+  .amounts .a .lbl{ font-size:10px; color:var(--ink-soft); }
+  .amounts .a .val{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:14px; }
+  .amounts .a .cnt{ font-family:'JetBrains Mono', monospace; font-weight:500; font-size:11px; color:var(--amber); margin-top:1px; }
+  .amounts .a .cnt.zero{ color:#bcb6a9; }
+
+  .subrow{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:12px;
+    padding: 3px 0;
+    border-top:1px dashed var(--line);
+  }
+  .subrow .v{ font-family:'JetBrains Mono', monospace; font-weight:700; }
+
+  .stores{ padding: 8px 14px; background:#f9f7f1; border-top:1px dashed var(--line); }
+  .stores .stores-title{ font-size:10px; color:var(--ink-soft); margin-bottom:6px; letter-spacing:0.04em; }
+  .store-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap:6px; }
+  .store-item{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .store-item span{ font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+  .store-item input{
+    width:44px;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:4px 2px;
+  }
+
+  .materials{ padding:9px 14px; border-top:1px dashed var(--line); background:#fbfaf6; }
+  .materials-title{ font-size:10px; color:var(--ink-soft); margin-bottom:5px; letter-spacing:0.03em; display:flex; justify-content:space-between; }
+  .materials-list{ display:grid; grid-template-columns: 1fr auto; gap:4px 10px; align-items:center; }
+  .materials-list .mname{ color:var(--ink); font-size:13px; }
+  .materials-list .mamt{ font-family:'JetBrains Mono', monospace; font-weight:900; font-size:20px; text-align:right; white-space:nowrap; line-height:1; }
+  .materials-empty{ font-size:11px; color:#b8b2a6; padding:2px 0; }
+
+  /* perforated tear line */
+  .tear{
+    position:relative;
+    height:0;
+    border-top: 2px dashed var(--line-strong);
+    margin: 0 0;
+  }
+  .tear::before, .tear::after{
+    content:"";
+    position:absolute; top:-7px;
+    width:14px; height:14px;
+    background:var(--paper);
+    border-radius:50%;
+    border:1.5px solid var(--line-strong);
+  }
+  .tear::before{ left:-8px; }
+  .tear::after{ right:-8px; }
+
+  .total-box{
+    background: var(--ink);
+    color:#fff;
+    padding: 12px 14px 14px;
+    text-align:center;
+  }
+  .total-box .lbl{
+    font-size:11px; letter-spacing:0.1em; color:#c9c4ba; margin-bottom:2px;
+  }
+  .total-box .val{
+    font-family:'JetBrains Mono', monospace;
+    font-size:30px;
+    font-weight:700;
+    line-height:1.1;
+  }
+  .total-box .val small{ font-size:14px; font-weight:500; margin-left:2px; }
+  .total-box.zero{ background:#3d3a35; }
+
+  .prep-check{
+    display:flex; align-items:center; justify-content:center;
+    padding:10px 14px;
+    border-top:1px dashed var(--line);
+    background:#fff;
+  }
+  .prep-check label{
+    display:flex; align-items:center; gap:8px;
+    font-size:14px; font-weight:700; color:var(--ink);
+    cursor:pointer; user-select:none;
+  }
+  .prep-check input[type="checkbox"]{
+    width:22px; height:22px;
+    accent-color: var(--green);
+    cursor:pointer;
+  }
+  .ticket.is-done{ opacity:0.55; }
+  .ticket.is-done .prep-check label{ color:var(--green); }
+
+  footer.summary{
+    margin-top:26px;
+    border-top:3px solid var(--line-strong);
+    padding-top:16px;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
+  }
+  footer.summary .grand{
+    font-family:'JetBrains Mono', monospace;
+    font-size:22px;
+    font-weight:700;
+  }
+  footer.summary .grand small{ font-size:12px; color:var(--ink-soft); font-weight:400; margin-right:6px;}
+
+  datalist{}
+
+  @media print{
+    @page{ size: A4 landscape; margin: 8mm; }
+    body{ background:#fff; padding:0; }
+    header, .settings, .toolbar, .load-banner, footer.summary{ display:none !important; }
+    .grid{ grid-template-columns: repeat(3,1fr); gap:8px; }
+    .ticket{ box-shadow:none; break-inside: avoid; }
+    .ticket:nth-child(5n){ break-after: page; }
+
+    /* 横向き印刷で5アイテムが1枚に収まるよう余白・行間を詰める（材料の数字サイズ＝老眼対策は変更しない） */
+    .ticket .top{ padding:8px 10px 6px; }
+    .idx-row{ margin-bottom:5px; }
+    .hinban-row{ margin-bottom:5px; }
+    .hinmei{ margin-bottom:6px; min-height:auto; }
+    .amounts{ margin-bottom:6px; gap:4px; }
+    .amounts .a{ padding:4px 3px; }
+    .subrow{ padding:2px 0; font-size:11px; }
+    .stores{ padding:6px 10px; }
+    .store-grid{ gap:3px; }
+    .materials{ padding:6px 10px; }
+    .materials-list{ gap:2px 8px; }
+    .tear{ display:none; }
+    .total-box{ padding:8px 10px 9px; }
+    .total-box .val{ font-size:22px; }
+    .prep-check{ padding:6px 10px; }
+    .prep-check input[type="checkbox"]{ width:18px; height:18px; }
+    .ticket.is-done{ opacity:1; } /* 印刷時は薄くしない（チェック済みも見た目はそのまま印刷） */
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <span class="eyebrow">Prep Ticket / 惣菜仕込み</span>
+      <h1>惣菜仕込み計算チケット</h1>
+      <span class="ver-badge">Ver. 2026-08-16c（スプレッドシート連携版）</span>
+    </div>
+    <div class="date-box">
+      <label>日付</label>
+      <input type="date" id="theDate">
+    </div>
+  </header>
+
+  <div class="settings">
+    <div class="cell">
+      <span class="lbl">通常弁当 食数</span>
+      <input type="number" id="cntNormal" value="33">
+    </div>
+    <div class="cell">
+      <span class="lbl">子供弁当 食数（全体）</span>
+      <input type="number" id="cntKid" value="77">
+    </div>
+    <div class="cell">
+      <span class="lbl">シニア弁当 食数</span>
+      <input type="number" id="cntSenior" value="10">
+    </div>
+    <div class="cell special">
+      <span class="lbl">学童ミニ弁当 人数</span>
+      <input type="number" id="cntMini" value="14">
+    </div>
+    <div class="cell special">
+      <span class="lbl">ミニ専用アイテム品番</span>
+      <input type="number" id="miniHinban" value="5121">
+    </div>
+    <div class="cell">
+      <span class="lbl">対象アイテム数</span>
+      <input type="number" id="itemCount" value="8" min="1" max="12">
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="hint">「最新データを取得」を押すと、スプレッドシートから本日の品番と弁当食数（通常・子供・シニア・学童ミニ）が自動で反映されます（インターネット接続が必要です）。数値は読込後も手入力で微調整できます。店舗欄は手入力です。</div>
+    <div class="toolbar-right">
+      <span class="data-status" id="dataStatus">データ：内蔵データ（らくらく仕込計算.xlsxより 2026-08-16 反映済み）</span>
+      <button class="primary" id="loadCsvBtn">最新データを取得（スプレッドシート）</button>
+      <button class="primary secondary" id="loadBtn">ローカルのExcelファイルを読み込む</button>
+      <input type="file" id="fileInput" accept=".xlsx" style="display:none;">
+      <button class="primary" id="printBtn">この内容を印刷する</button>
+    </div>
+  </div>
+
+  <div class="load-banner" id="loadBanner"></div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer class="summary">
+    <div class="hint">おかずアイテム マスタ：<span id="itemMasterCount">0</span> 品目を読み込み済み</div>
+    <div class="grand"><small>パック数合計（全アイテム）</small><span id="grandTotal">0</span> パック</div>
+  </footer>
+
+</div>
+
+<datalist id="itemList"></datalist>
+
+<script>
+// ---- Minimal built-in XLSX reader (no external library) ----
+function xzGetAttr(s, name){
+  const m = s.match(new RegExp(name+'="([^"]*)"'));
+  return m ? m[1] : null;
+}
+function xzDecodeEntities(s){
+  return s.replace(/&#x([0-9a-fA-F]+);/g, (_,h)=>String.fromCodePoint(parseInt(h,16)))
+           .replace(/&#(\d+);/g, (_,d)=>String.fromCodePoint(parseInt(d,10)))
+           .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+}
+function xzColToIndex(letters){
+  let n = 0;
+  for(let i=0;i<letters.length;i++) n = n*26 + (letters.charCodeAt(i) - 64);
+  return n - 1;
+}
+function xzFindEOCD(dv, len){
+  for(let i = len - 22; i >= 0; i--){
+    if(dv.getUint32(i, true) === 0x06054b50) return i;
+  }
+  throw new Error('ZIPファイルの終端情報が見つかりません（xlsxファイルとして壊れている可能性があります）');
+}
+function xzParseEntries(fileBuf, dv){
+  const eocdOff = xzFindEOCD(dv, fileBuf.length);
+  const cdOffset = dv.getUint32(eocdOff+16, true);
+  const cdCount = dv.getUint16(eocdOff+10, true);
+  const entries = {};
+  let off = cdOffset;
+  const dec = new TextDecoder('utf-8');
+  for(let i=0;i<cdCount;i++){
+    const method = dv.getUint16(off+10, true);
+    const compSize = dv.getUint32(off+20, true);
+    const nameLen = dv.getUint16(off+28, true);
+    const extraLen = dv.getUint16(off+30, true);
+    const commentLen = dv.getUint16(off+32, true);
+    const localHeaderOffset = dv.getUint32(off+42, true);
+    const name = dec.decode(fileBuf.subarray(off+46, off+46+nameLen));
+    entries[name] = { method, compSize, localHeaderOffset };
+    off += 46 + nameLen + extraLen + commentLen;
+  }
+  return entries;
+}
+async function xzInflateRaw(bytes){
+  if(typeof DecompressionStream === 'undefined'){
+    throw new Error('お使いのブラウザがファイル解凍に対応していません（Safariを最新版に更新してください）');
+  }
+  const ds = new DecompressionStream('deflate-raw');
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  const ab = await new Response(stream).arrayBuffer();
+  return new Uint8Array(ab);
+}
+async function xzGetEntryBytes(fileBuf, dv, entry){
+  const lho = entry.localHeaderOffset;
+  const nameLen = dv.getUint16(lho+26, true);
+  const extraLen = dv.getUint16(lho+28, true);
+  const dataStart = lho + 30 + nameLen + extraLen;
+  const compData = fileBuf.subarray(dataStart, dataStart + entry.compSize);
+  if(entry.method === 0) return compData;
+  if(entry.method === 8) return await xzInflateRaw(compData);
+  throw new Error('未対応の圧縮方式です');
+}
+function xzParseSheetRows(xml, sharedStrings){
+  const rowBlocks = xml.match(/<row\b[^>]*>[\s\S]*?<\/row>|<row\b[^>]*\/>/g) || [];
+  const rows = [];
+  rowBlocks.forEach(rowXml=>{
+    const rowNumMatch = rowXml.match(/<row\b[^>]*\br="(\d+)"/);
+    const rowNum = rowNumMatch ? parseInt(rowNumMatch[1]) : (rows.length+1);
+    const cellTags = rowXml.match(/<c\b[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g) || [];
+    const rowArr = [];
+    cellTags.forEach(cellXml=>{
+      const ref = xzGetAttr(cellXml, 'r');
+      if(!ref) return;
+      const colMatch = ref.match(/[A-Z]+/);
+      if(!colMatch) return;
+      const colIdx = xzColToIndex(colMatch[0]);
+      const type = xzGetAttr(cellXml, 't');
+      let value = null;
+      if(type === 'inlineStr'){
+        const m = cellXml.match(/<is>[\s\S]*?<\/is>/);
+        if(m){
+          const texts = m[0].match(/<t[^>]*>([\s\S]*?)<\/t>/g) || [];
+          value = xzDecodeEntities(texts.map(t=>t.replace(/<t[^>]*>/,'').replace(/<\/t>/,'')).join(''));
+        }
+      } else {
+        const vm = cellXml.match(/<v>([\s\S]*?)<\/v>/);
+        if(vm){
+          const raw = vm[1];
+          if(raw === ''){
+            value = null;
+          } else if(type === 's') value = sharedStrings[parseInt(raw)];
+          else if(type === 'str' || type === 'e') value = xzDecodeEntities(raw);
+          else if(type === 'b') value = raw === '1';
+          else value = parseFloat(raw);
+        }
+      }
+      rowArr[colIdx] = (value === undefined) ? null : value;
+    });
+    rows[rowNum-1] = rowArr;
+  });
+  const out = [];
+  for(let i=0;i<rows.length;i++) out.push(rows[i] || []);
+  return out;
+}
+async function loadXlsxSheets(file, sheetNames){
+  const fileBuf = new Uint8Array(await file.arrayBuffer());
+  const dv = new DataView(fileBuf.buffer, fileBuf.byteOffset, fileBuf.byteLength);
+  const entries = xzParseEntries(fileBuf, dv);
+  const dec = new TextDecoder('utf-8');
+
+  async function entryText(name){
+    if(!entries[name]) return null;
+    const bytes = await xzGetEntryBytes(fileBuf, dv, entries[name]);
+    return dec.decode(bytes);
+  }
+
+  const workbookXml = await entryText('xl/workbook.xml');
+  const relsXml = await entryText('xl/_rels/workbook.xml.rels');
+  if(!workbookXml || !relsXml){
+    throw new Error('xlsxの構造が読み取れません（Excelファイルではない可能性があります）');
+  }
+
+  const sheetNameToRid = {};
+  (workbookXml.match(/<sheet\b[^>]*\/?>/g)||[]).forEach(tag=>{
+    sheetNameToRid[xzGetAttr(tag,'name')] = xzGetAttr(tag,'r:id');
+  });
+  const relToTarget = {};
+  (relsXml.match(/<Relationship\b[^>]*\/?>/g)||[]).forEach(tag=>{
+    relToTarget[xzGetAttr(tag,'Id')] = xzGetAttr(tag,'Target');
+  });
+
+  let sharedStrings = [];
+  const ssXml = await entryText('xl/sharedStrings.xml');
+  if(ssXml){
+    const siBlocks = ssXml.match(/<si>[\s\S]*?<\/si>/g) || [];
+    sharedStrings = siBlocks.map(si=>{
+      const texts = si.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || [];
+      return xzDecodeEntities(texts.map(t=>t.replace(/<t[^>]*>/,'').replace(/<\/t>/,'')).join(''));
+    });
+  }
+
+  const result = {};
+  for(const sheetName of sheetNames){
+    const rid = sheetNameToRid[sheetName];
+    if(!rid){ result[sheetName] = null; continue; }
+    let target = relToTarget[rid];
+    if(!target){ result[sheetName] = null; continue; }
+    target = target.replace(/^\//,'');
+    if(!target.startsWith('xl/')) target = 'xl/' + target;
+    const xml = await entryText(target);
+    if(!xml){ result[sheetName] = null; continue; }
+    result[sheetName] = xzParseSheetRows(xml, sharedStrings);
+  }
+  return result;
+}
+
+
+const ITEMS = [[11,"弁当",0,60,0],[12,"おにぎり",0,0,0],[13,"おにぎりセット",0,0,0],[14,"オムハヤシ",0,0,0],[15,"オムライス",0,0,0],[16,"親子丼",0,0,0],[17,"かき揚げ天ぷら丼",0,0,0],[18,"平牧三元豚☆カツ丼　",0,0,0],[19,"カツ丼　ミニ",0,0,0],[20,"きのこおこわ",0,0,0],[21,"香味野菜のサラダうどん",0,0,0],[22,"根菜おこわ",200,0,0],[23,"根菜と豚肉の甘辛丼",0,0,0],[24,"ご飯",0,0,0],[25,"チキンカツ丼",0,0,0],[26,"さつま芋ときのこのおこわ",0,0,0],[27,"さわやかサラダうどん",1,0.5,0],[28,"彩菜うどん",1,0.5,0],[29,"三元豚のかやくごはん",0,0,0],[30,"三色おはぎ　予約",0,0,0],[31,"三色丼",0,0,0],[32,"ジャージャー麺",0,0,0],[33,"赤飯　　",0,60,0],[34,"赤飯（栗入り）",0,0,0],[36,"チキン南蛮丼",0,0,0],[37,"チキン味噌カツ丼",0,0,0],[38,"中華丼",0,0,0],[39,"天むすセット",0,0,0],[40,"鶏そぼろ丼",0,0,0],[41,"鶏丼",0,0,0],[42,"鶏のから揚げ丼",0,0,0],[43,"豆腐の蒲焼丼",0,0,0],[44,"夏野菜天ぷら丼",0,0,0],[45,"茄子のミートソースグラタン",0,0,0],[46,"パリパリあんかけ焼きそば",0,0,0],[47,"バンバン麺",0,0,0],[48,"ビビンバ麺",0,0,0],[49,"冷やしかき揚げうどん",0,0,0],[50,"冷やしつるつるうどん",0,0,0],[51,"ミートソースグラタン",0,0,0],[52,"蓮根つくね丼",0,0,0],[53,"鶏ごまつけめん",0,0,0],[54,"蕎麦屋の和風カレ-丼",0,0,0],[55,"ジューシートマトの炊き込みご飯",0,0,0],[56,"マカロニグラタン",0,0,0],[57,"鶏ねぎ塩丼",0,0,0],[58,"特別弁当(９分割弁当）",0,0,0],[59,"ふきおこわ",0,0,0],[60,"鶏肉と根菜の混ぜご飯",0,0,0],[61,"カラフル塩マーボー丼",0,0,0],[62,"さつま芋ときのこおこわ　(小）",0,0,0],[63,"赤飯（栗入り）　（小）",0,0,0],[64,"三元豚のかやくごはん(小）",0,0,0],[65,"五目おこわ",0,0,0],[66,"お子様ランチ",0,0,0],[67,"梅の香おこわ",0,0,0],[68,"弁当(配達）",0,0,0],[69,"カレーピラフドリア",0,0,0],[70,"車麩の甘辛丼",0,0,0],[71,"中華おこわ",0,0,0],[73,"パッタイ",0,0,0],[74,"冷やし肉味噌うどん",0,0,0],[75,"平牧三元豚☆カツ丼",0,0,0],[76,"塩むすび",0,0,0],[77,"麻婆豆腐丼",0,0,0],[78,"ガパオライス",0,0,0],[79,"豚丼",0,0,0],[80,"やきとり丼",0,0,0],[81,"二色丼",0,0,0],[82,"のり弁",0,0,0],[83,"海老入り天丼",1,0.5,0],[84,"ミニ丼（味噌カツ）",0,0,0],[85,"ミニ丼（豚そぼろ）",0,0,0],[86,"山形風冷やし鶏そば",0,0,0],[87,"きのこの炊き込みご飯",200,100,0],[88,"海老ピラフ",0,120,0],[89,"オムライスセット",0,0,0],[90,"鮭のガリバタごはん",0,0,0],[91,"海老ドリア",0,0,0],[92,"ちりめん梅おこわ",0,0,0],[93,"枝豆ととうもろこしのおこわ",200,100,0],[94,"バターチキンカレー",0,0,0],[95,"スパイスカレー（チキン）",0,0,0],[96,"鶏釜飯",0,0,0],[97,"筍おこわ",0,0,0],[101,"いなりずし",0,0,0],[102,"海老マヨ巻寿司",0,0,0],[103,"恵方巻　予約",0,0,0],[104,"恵方巻　",0,0,0],[105,"キムパプハーフ",0,0,0],[106,"恵方巻ハーフ　予約外",0,0,0],[107,"きのこいなり",0,0,0],[108,"きのこちらし寿司",0,0,0],[109,"キムパプ",0,0,0],[110,"牛肉しぐれ巻き",0,0,0],[111,"五目いなり",0,0,0],[112,"サラダ太巻　一本",0,0,0],[113,"サラダ太巻き 6切れ",0,0,0],[114,"塩レモン鶏の太巻　一本",0,0,0],[115,"塩レモン鶏の太巻",0,0,0],[116,"寿司セット　いなり・サラダ太巻",0,0,0],[117,"寿司セット　細巻いなりサラダ太巻",0,0,0],[118,"助六寿司　",0,0,0],[119,"筍ちらし　　",0,0,0],[120,"ちらし寿司　",0,0,0],[121,"筑前ちらし",0,0,0],[122,"筑前ちらしの太巻",0,0,0],[123,"ツナちらし寿司",0,0,0],[124,"ツナのしぐれ巻き　6切れ",0,0,0],[125,"ツナの押し寿司",0,0.5,0],[126,"とんかつ巻寿司 6切れ",0,0,0],[127,"鶏の鍬焼き寿司　　６切れ",0,0,0],[128,"菜の花ちらし",0,0,0],[130,"太巻　　4切れ",0,0,0],[131,"太巻 ６切れ",0,0,0],[132,"細巻・いなりセット",0,0,0],[133,"焼き鯖太巻き",0,0,0],[134,"焼き鯖寿司(ハーフ）",0,0,0],[135,"太巻一本売り",0,0,0],[136,"焼き鯖寿司一本",0,0,0],[137,"焼き鯖寿司一本(予約）",0,0,0],[138,"ゆず鶏巻き寿司",0,0,0],[139,"いなり寿司2個入り",0,0,0],[140,"かき揚げ太巻き",0,0,0],[141,"ひなちらし寿司（予約）",0,0,0],[142,"ひなちらし寿司",0,0,0],[143,"味噌カツ巻寿司",0,0,0],[144,"とんかつ巻寿司 ハーフ",0,0,0],[145,"蒲焼さんま太巻き",0,0,0],[146,"『旬』の押し寿司",0,0,0],[147,"はらくち太巻き",0,0,0],[148,"特製えびの押し寿司",0,0,0],[201,"キャベツのチーズカツ",0,1,0.5],[202,"ゴマ味噌串カツ",4,2,2],[203,"三元豚のミルフィーユ味噌カツ",0,0,0],[204,"三元豚の肉巻フライ",0,0.7,0.25],[205,"ささみのひとりっこ",1,1,1],[206,"しっとりチキンカツ",5,2,2],[207,"スコッチエッグ",0,0,0],[208,"イカの唐揚げ",0,0,0],[209,"スパイシーイカフライ",0,0,0],[210,"セサミチキン",5,2,2],[211,"チキンガーリックフライ",5,2,2],[212,"ジューシーチキンカツ",5,2,2],[213,"手羽元フライドチキン５本",0,0,0],[214,"茄子メンチ",0,1,0.5],[215,"ピリ辛スティックチキン",5,2,2],[216,"ふっくらチキンメンチ",0,0,0],[217,"双子のササミ",5,2,2],[218,"ヘルシーメンチ（1個）",0,0,0],[219,"レバーカレー揚げ",70,0,0],[220,"れんこんしゃきしゃきメンチ",0,0,0],[221,"キャベツメンチ（２個入り）",120,60,40],[222,"ふっくらチキンメンチ(2個入り）",120,50,40],[223,"ごまマヨチキンカツ",5,2,2],[224,"三元豚肉巻きフライ2本入り",0,0,0],[225,"ひじき入りメンチカツ",0,0,0],[226,"ひじき入りメンチカツ(2個入り）",0,0,0],[227,"きんぴらメンチ",0,0,0],[228,"きんぴらメンチ(2個入り）",60,40,40],[229,"れんこんしゃきしゃきメンチ２個入り",60,40,40],[230,"鱈のハーブフライ",4,1,0.5],[231,"海老カツ（2個入り）",60,60,40],[232,"枝豆入りとり天",0,0,0],[233,"ほっけの大葉フライ",3,1,1],[234,"ツナメンチ",0,0,0],[235,"ツナメンチ(2個入り）",0,0,0],[236,"高野豆腐のはさみ揚げ",0,0,0],[237,"高野の利休揚げ",0,0,0],[238,"れんこんボール",5,2,1],[239,"コーンクリーム春巻き",0,0,0],[240,"平田牧場三元豚ヒレかつ",0,0,0],[241,"オニポテセット",0,0,0],[242,"串揚げ(椎・玉・豚)",0,0,0],[243,"枝豆入り梅から揚げ",5,2,2],[244,"うずら串　１本",0,0,0],[245,"ミラノ風チキンカツレツ",0,0,0],[301,"イタリアンクリームコロッケ(2個入り)",50,40,40],[302,"イタリアンクリームコロッケ３個入り",0,0,0],[303,"枝豆クリームコロッケ",0,0,0],[304,"枝豆クリームコロッケ３個入り",0,0,0],[305,"枝豆コロッケ",50,40,40],[306,"枝豆コロッケ３個入り",0,0,0],[307,"おつまみコロッケ",0,0,0],[308,"かぼちゃクリームコロッケ",0,0,0],[309,"かぼちゃクリームコロッケ2個入り",50,40,40],[310,"カレーコロッケ",0,0,0],[311,"カレーコロッケ３個入り",0,0,0],[312,"きのこコロッケ",0,0,0],[313,"きのこコロッケ３個入り",0,0,0],[314,"きのこクリームコロッケ",0,0,0],[315,"きのこクリームコロッケ３個入り",0,0,0],[316,"クリーミーコロッケ(2個入り)",50,40,40],[317,"クリーミーコロッケ",0,0,0],[318,"コーンコロッケ",50,40,40],[319,"コーンコロッケ３個入り",0,0,0],[320,"コロッケアラカルト",0,0,0],[321,"里芋コロッケ",50,40,40],[322,"里芋コロッケ３個入り",0,0,0],[323,"そら豆コロッケ",50,40,40],[324,"そら豆コロッケ３個入り",0,0,0],[325,"そら豆のクリームコロッケ",0,0,0],[326,"そら豆のクリームコロッケ３個入り",50,40,40],[327,"チキンクリームコロッケ",0,0,0],[328,"チキンクリームコロッケ３個入り",0,0,0],[329,"ツナサラコロッケ",50,40,40],[330,"ツナサラコロッケ３個入り",0,0,0],[331,"菜の花コロッケ",0,0,0],[332,"菜の花コロッケ３個入り",0,0,0],[333,"肉じゃがコロッケ",0,0,0],[334,"肉じゃがコロッケ2個入り",100,40,40],[335,"ビーフコロッケ",0,0,0],[336,"ビーフコロッケ３個入り",0,0,0],[337,"びっくりコロッケ",0,0,0],[338,"びっくりコロッケ３個入り",0,0,0],[339,"ポテトコロッケ",0,0,0],[340,"ポテトコロッケ３個入り",0,0,0],[341,"山の幸コロッケ",50,40,40],[342,"山の幸コロッケ３個入り",0,0,0],[343,"焼肉コロッケ",50,40,40],[344,"焼肉コロッケ３個入り",0,0,0],[345,"トマトのグラコロ",50,40,40],[346,"トマトのグラコロ3個入り",0,0,0],[347,"チ－ズサラダコロッケ",50,40,40],[348,"チ－ズサラダコロッケ3個入り",0,0,0],[349,"黒胡麻コロッケ",0,0,0],[350,"黒胡麻コロッケ２個入り",100,40,40],[351,"ベ-コンたっぷりソイコロッケ",0,0,0],[352,"ベ-コンたっぷりソイコロッケ３個入り",0,0,0],[353,"さつま芋クリームコロッケ",50,40,40],[354,"さつま芋クリームコロッケ（3個入り）",0,0,0],[355,"おにぎりコロッケ",0,0,0],[356,"コーンクリームコロッケ",0,0,0],[357,"コーンクリームコロッケ（３個入り）",0,0,0],[358,"サーモンクリームコロッケ",0,0,0],[359,"鮭と焼きコーンのポテトコロッケ",0,0,0],[360,"揚げないポテトコロッケ",0,0,0],[380,"１００円コロッケ",0,0,0],[381,"コロコロコロッケ",0,0,0],[382,"きのこクリームコロッケ（２ケ入り）",50,40,40],[383,"ポテトコロッケ（２ケ入り）",100,40,40],[384,"コーンクリームコロッケ（２ヶ入り）",50,40,40],[385,"チキンクリームコロッケ（２ヶ入り）",50,40,40],[386,"カレーコロッケ（２ケ入り）",50,40,40],[387,"そら豆クリームコロッケ（2ケ入）",0,0,0],[388,"枝豆クリームコロッケ（2ケ入）",50,40,40],[389,"かぼちゃクリームコロッケ（３ケ入）",0,0,0],[391,"サーモンクリームコロッケ（2ケ入）",50,40,40],[392,"サーモンクリームコロッケ（3ケ入）",0,0,0],[393,"MINIポテコロ（5ケ入り）",0,0,0],[394,"海老クリームコロッケ　２コ入り",50,40,40],[395,"コーンコロッケ2個入り",0,0,0],[396,"枝豆コロッケ2個入り",0,0,0],[397,"きのこコロッケ2個入り",50,40,40],[401,"揚げ豆腐のパリパリ野菜のせ",4,1,1],[402,"田舎煮",0,0,0],[403,"卯の花",175,35,20],[404,"オランダ高野の炊き合わせ",6,2,1],[405,"野菜かき揚げセット(3枚入)",240,0,0],[406,"カラフル揚げだし豆腐",4,1,1],[407,"きんぴらごぼう",105,20,10],[408,"金時豆",140,25,15],[409,"切り昆布煮",115,35,15],[410,"切干・切り昆布煮",150,35,15],[411,"切干大根ひじき煮",140,35,15],[412,"切干大根煮",150,35,15],[413,"コロコロ野菜のきんぴら",0,0,0],[414,"こんにゃくきんぴら",0,0,0],[415,"高野豆腐の友禅炊き",150,35,15],[416,"ごぼうとこんにゃくのピり辛",120,25,15],[417,"五目きんぴら",120,25,15],[418,"五目豆 　",150,30,15],[419,"白和え",140,35,15],[420,"じゃこ大豆",130,35,15],[421,"十目ひじき煮",0,35,15],[422,"季節の炊き合わせ","　",0,0],[423,"筑前煮","　",0,0],[425,"豆乳卵豆腐（海老あん）",0,1,0.5],[426,"錦和え",150,35,20],[427,"春キャベツの白和え",140,35,20],[428,"春菊の香り春巻き2本入り",0,0,0],[429,"ひじきと根菜の炒め煮",140,35,15],[430,"ひじきの黄金煮",155,35,15],[431,"ひじきの五目煮",120,35,15],[432,"ひんやり香味なす",0,3,2],[433,"袋煮",2,0.5,0.25],[434,"ぶどう豆",125,30,15],[435,"ひじきの白和え",150,35,20],[436,"かぼちゃ煮",0,0,0],[437,"かぼちゃのいとこ煮",0,0,0],[438,"ひじきとツナの煮物",120,35,15],[439,"じゃがいもと春雨の煮物",200,35,20],[440,"筑前煮（大）",0,0,0],[441,"蓮根の柚子あんかけ",0,0,0],[443,"切り昆布煮（小）",0,0,0],[444,"切干大根ひじき煮（小）",0,0,0],[445,"ひじきの五目煮（小）",0,0,0],[446,"切干大根煮（小）",0,0,0],[447,"五目きんぴら（小）",0,0,0],[448,"きんぴらごぼう(小）",0,0,0],[449,"ひじきと根菜の炒め煮（小）",0,0,0],[450,"お豆さん（桜エビと大豆の煮物）",0,0,0],[451,"野菜の甘酢あん",0,0,0],[452,"レンコンと切昆布の塩きんぴら",0,0,0],[453,"豆腐と車麩の南蛮漬け",3,1,1],[454,"大根と豆腐の旨煮",0,0,0],[455,"お野菜たっぷり卯の花",0,35,20],[457,"キャロットラペ",170,25,15],[458,"福白金時豆",0,30,15],[459,"高野豆腐の角煮風",0,"　",0],[460,"きのこの白和え",140,35,20],[461,"揚げニョッキのアラビアータ（辛め）",5,2,1],[462,"蓮根きんぴら",100,25,15],[463,"甘辛ごぼう",80,15,10],[464,"切り干し大根ごま酢和え",150,35,20],[465,"車麩のオランダ煮",6,1,1],[466,"海老のビスク",0,0,0],[467,"ごぼうと人参の胡麻和え",120,25,15],[468,"れんこん大根もち",140,"　","　"],[469,"揚げ大根のあんかけ",5,2,0],[701,"おはぎ　2個",0,0,0],[702,"あんこ",0,0,0],[703,"シュガードーナツ",0,0,0],[704,"きばるパウンドケーキ",0,0,0],[705,"白玉あずき",0,0,0],[706,"スイートポテト　　３個",0,0,0],[707,"大学いも",0,0,0],[708,"水ようかん",0,0,0],[709,"バナナブレッド",0,0,0],[710,"赤飯おはぎ　２個入り",0,0,0],[711,"赤飯おはぎ３個入り（予約）",0,0,0],[712,"赤飯おはぎ３個入り",0,0,0],[713,"赤飯おはぎ",0,0,0],[714,"しっとりバナナケーキ",0,0,0],[715,"りんごのケーキ",0,0,0],[716,"焼き芋",0,0,0],[717,"こらふの風鈴",1,0,0],[718,"スイートポテト　　2個",0,0,0],[719,"水無月",0,0,0],[720,"あんまん",0,0,0],[721,"かぼちゃプリン",0,0,0],[722,"あずきんちゃん",0,0,0],[723,"みたらし白玉",0,0,0],[724,"白玉ごま団子",0,0,0],[725,"ほうじ茶風鈴",0,0,0],[726,"台湾カステラ",0,0,0],[727,"とろふる杏仁豆腐",0,0,0],[728,"キャロットケーキ",0,0,0],[729,"あんどーなっつ",0,0,0],[730,"さつまいもロースト",0,0,0],[731,"きばるオレンジのプリン",0,0,0],[732,"あげぱん",0,0,0],[733,"栗蒸羊羹",0,0,0],[734,"おさつどーなつ",0,0,0],[735,"こらふ＆ほうじ茶風鈴セット",0,0,0],[736,"紅茶プリン",0,0,0],[737,"抹茶のむしパウンド",0,0,0],[738,"ごま団子(4個入)",0,0,0],[801,"1P￥400均一",0,0,0],[804,"オードブル",0,0,0],[805,"おせち厳選6品",0,0,0],[806,"こらふセット",0,0,0],[807,"デポチキセット",0,0,0],[808,"ミニセット",0,0,0],[809,"運営委員会　企画",0,0,0],[811,"こらふのおかずセット",0,0,0],[812,"お祝いこらふセット(予約）",0,0,0],[813,"お祝い弁当（梅）",0,0,0],[814,"お祝いこらふ弁当（松）",0,0,0],[815,"鶏づくし弁当",0,0,0],[816,"ミニこらふセット",0,0,0],[817,"クリスマスチキン",0,0,0],[818,"お楽しみごはん弁当",0,0,0],[819,"天ぷらセット☆彡",0,0,0],[820,"スペシャルオードブル",0,0,0],[821,"こらふ特製☆焼肉のたれ",0,0,0],[822,"ラビゴットソース",0,0,0],[823,"フィッシュバーガーセット",0,0,0],[824,"ヒレカツバーガーセット",0,0,0],[825,"フィッシュ＆チップス",0,0,0],[826,"天ぷらセット(大)",0,0,0],[827,"お煮しめ",0,0,0],[828,"フィッシュバーガーいぶりがっこタルタル",0,0,0],[829,"海老天　　1本",0,0,0],[830,"Happy Mother's Day",0,0,0],[831,"おべんとう",0,0,0],[832,"こどもべんとう",0,0,0],[5001,"あぶたまと煮物のセット",1,0.5,0.25],[5002,"油揚げの蒲焼き風",0,0,0],[5003,"揚げしゅうまい　5個　",5,2,1],[5004,"揚げナスの肉みそはさみ",0,2,1],[5005,"野菜かき揚げ",0,35,20],[5006,"いかと里芋の煮物",0,0,0],[5007,"えのきどっさりつくね",6,2,2],[5008,"海老かき揚げ",0,0,0],[5009,"かぼちゃのそぼろあん",0,0,0],[5010,"三元豚のきのこバーグ",140,50,35],[5011,"餃子",7,2,1],[5012,"デポチキBOX",0,0,0],[5013,"車麩のはさみ揚げ",6,1,1],[5014,"クリスピーチキン",5,2,2],[5015,"高野豆腐の射込み",4,1,0.5],[5016,"高野豆腐の海老射込み",4,1,0.5],[5017,"赤魚の塩レモン風味フライ",5,2,1],[5018,"高野豆腐の肉巻き",0,0,0],[5019,"根菜入りつくね",0,0,0],[5020,"赤魚のラビゴットソース(DXサイズ)",0,0,0],[5021,"赤魚のラビゴットソース",80,40,40],[5022,"さつま芋とレンコンの甘辛",0,0,0],[5023,"さばのピリ辛　2切れ",2,1,1],[5024,"目鯛のグリル・大葉ジェノベーゼ",70,35,20],[5025,"さばのみそ煮　　2切れ",2,1,0.5],[5026,"ぶりの竜田揚げ",0,0,0],[5027,"さばの南蛮焼　　2切れ",4,1,0.5],[5028,"さばの南蛮焼　　4切れ",0,0,0],[5029,"サラダ風生春巻き",0,0,0],[5030,"さんまの蒲焼",0,0,0],[5031,"さんまの梅煮",0,0,0],[5032,"チリコンカン",180,35,20],[5033,"ザーサイ餃子",7,2,1],[5034,"塩から揚げ",5,2,2],[5035,"塩麹チキンの南蛮漬け",5,2,2],[5036,"塩麹クリスピーチキン",5,2,2],[5037,"しそつくね",6,2,2],[5038,"しゅうまい　　６個",6,2,2],[5039,"真珠蒸し 5個",5,2,1],[5040,"酢豚",0,0,0],[5041,"大根棒餃子",7,2,1],[5042,"鱈フライ",3,1,0.5],[5043,"チャプチェ",140,35,15],[5044,"つくね",6,2,2],[5045,"つくねん棒",0,0,0],[5046,"鶏手羽のマーマレード焼",3,2,2],[5047,"鶏とザーサイの和え物",135,35,15],[5048,"鶏と茄子の酢豚風",0,0,0],[5049,"鶏の変わり揚げ",6,1.5,1.5],[5050,"鶏手羽肉のさっぱり煮",0,2,1],[5051,"鶏団子甘辛ソース",7,2,2],[5052,"豆腐の蒲焼",0,0,0],[5053,"なすのこくうま",6,3,2],[5054,"茄子の肉はさみ天あんかけ",5,2,1],[5055,"長芋と揚げ鶏の煮物",5,2,2],[5056,"名古屋風手羽先揚げ　4本いり",0,0,0],[5057,"にぎやかマーボ",0,1,1],[5058,"春巻き",0,0.5,0.25],[5059,"三元豚の豆腐バーグ",160,50,40],[5060,"野菜たっぷりつくね",0,0,0],[5061,"キャベツたっぷりチキンバーグ",180,50,30],[5062,"ヘルシ-味噌つくね",0,0,0],[5063,"マーボー茄子",6,3,2],[5064,"マーボー春雨",210,35,20],[5065,"ミートボール",8,2,2],[5066,"ミートローフ　　",0,0,0],[5067,"柚子鶏",5,2,2],[5068,"レモン鶏",5,2,2],[5069,"レンコンのはさみ揚げ",0,1,1],[5070,"れんこん肉はさみあんかけ",0,1,1],[5071,"ロールキャベツ",2,0.5,0.25],[5072,"鶏ごぼうこんにゃく",105,25,20],[5073,"チキンのトマト煮",0,0,0],[5074,"イカフライ",0,0,0],[5075,"鶏肉と茄子のレモンソース",0,0,0],[5076,"鶏の大根おろし煮",5,2,1],[5078,"アジアンクリスピ-チキン",5,2,2],[5079,"目鯛の塩レモンマリネ",4,2,2],[5080,"手羽先のみそ焼き",0,0,0],[5081,"いろどり野菜と鶏のテリ-ヌ",0,0,0],[5082,"ハニーマスタード・チキン",6,2,2],[5083,"ひとくち大鶏排(ダージーパイ)",125,2,2],[5084,"ジャークチキン",0,0,0],[5085,"チンジャオチキン",180,40,20],[5086,"鮭の酢豚風",0,2,2],[5087,"おきつね餃子",5,2,2],[5088,"鶏と高野の甘酢あん",4,2,1],[5089,"月見つくね",0,0,0],[5090,"レンコンのはさみ揚げ(2個入り）",0,0,0],[5091,"きのこ餃子",0,0,0],[5092,"唐揚げ三兄弟",0,0,0],[5093,"月見つくね２個入り",160,50,50],[5094,"肉味噌豆腐",4,1,1],[5095,"目鯛の酢豚風",4,2,2],[5096,"おつまみ焼売",0,0,0],[5097,"鶏のオイマヨ＆ごぼうの甘辛",0,0,0],[5098,"目鯛のタンドリー",2,1,0.5],[5099,"鶏皮唐揚げ",0,0,0],[5100,"カジキのバーグ",0,0,0],[5101,"鶏もも肉の唐揚げ（ばら売り）",0,0,0],[5102,"タンドリーチキン（２本入）",0,2,2],[5103,"にくまん",0,0,0],[5104,"デポチキ",5,2,2],[5105,"唐揚げ*カレー味",5,2,2],[5106,"平田牧場三元豚のヒレカツ",0,0,0],[5107,"春巻き（２本入り）",0,0.5,0.25],[5108,"鶏の胡麻衣焼き",0,2,2],[5109,"蓮根餃子",7,1,1],[5110,"ヤンニョムチキン",5,2,2],[5111,"緑黄色野菜たっぷりしゅうまい",6,2,2],[5112,"平田牧場三元豚の角煮まん",0,0,0],[5113,"白身魚のおろし煮",0,0,0],[5114,"信田巻き（しのだまき）",6,2,1],[5115,"海老入り焼売",5,2,1],[5116,"ジャンバラヤ",0,0,0],[5117,"ささみカツ梅味噌かけ",2,1,1],[5118,"目鯛のアラビアータ",80,40,20],[5119,"具が大きい！焼売",6,2,1],[5120,"海老ニラ饅頭",5,2,1],[5121,"ブリの香味天",100,35,25],[5122,"丹精國鶏のピリ辛炒め",5,2,2],[5123,"シーザーチキン",0,2,2],[5124,"ゴロゴロ野菜とブリの黒酢餡",4,2,1],[5125,"ブリのコク味噌煮",4,2,1],[5126,"THE・からあげ",6,2,2],[5127,"チキン南蛮",0,2,2],[5128,"鮭マッシュポテト焼き",0,35,20],[5129,"鶏もも肉の角煮風",0,0,0],[5130,"魚のふわとろ焼き",0,35,20],[5131,"鱈のトマトソース",0,0,0],[5132,"サーモンポテトグラタン",0,0,0],[5133,"イカの天ぷら",0,0,0],[5144,"キムチ餃子",0,0,0],[6001,"いかとひじきのマリネ",150,30,15],[6002,"いかと季節野菜の揚げびたし",0,0,0],[6003,"いかと野菜のカレーマリネ",150,35,20],[6004,"いかマリネ",0,0,0],[6005,"エッグポテトサラダ",190,40,20],[6006,"かぼちゃのサラダ",140,35,20],[6007,"かぼちゃの甘カレーサラダ",140,35,20],[6008,"季節の野菜サラダ","　",1,1],[6009,"キャベコーンサラダ",210,35,15],[6010,"キャベコーンサラダ　　小",0,0,0],[6011,"きんぴらサラダ",130,25,15],[6012,"切り昆布サラダ",135,35,20],[6013,"ごぼうサラダ",140,25,15],[6014,"ごぼう風味サラダ",0,0,0],[6015,"ごま・ゴマ・胡麻ポテト",160,40,20],[6016,"ごまじゃこサラダ　",120,35,15],[6017,"五色大根サラダ",170,35,15],[6018,"さわやかフレッシュポテトサラダ",190,40,20],[6019,"さわやかフレッシュポテトサラダ　小",0,0,0],[6020,"三色ナムル",150,25,15],[6021,"四川風白菜漬",150,35,15],[6022,"スピナチサラダ",130,25,15],[6023,"蒸しにんじんのサラダ",180,35,20],[6024,"多品目ナムル",0,0,0],[6025,"大豆とひじきのサラダ",130,30,15],[6026,"中華サラダ",135,35,20],[6027,"中華れんこんサラダ",140,35,20],[6028,"ツナコーンサラダ",170,40,20],[6029,"ツナコーンサラダ小",0,0,0],[6030,"鶏と枝豆入りひじきサラダ",145,35,15],[6031,"八品目卯の花サラダ",0,0,0],[6032,"バランスサラダ",120,30,15],[6033,"バンバンジーサラダ",165,30,15],[6034,"ビーンズサラダ",150,35,20],[6035,"ひじきのさっぱりサラダ",130,35,15],[6036,"フレッシュポテトサラダ",190,40,20],[6037,"フレッシュポテトサラダ小",0,0,0],[6038,"フレッシュマカロニサラダ",190,40,20],[6039,"フレッシュマカロニサラダ小",0,0,0],[6040,"ポテトサラダ",190,40,20],[6041,"ポテトサラダ　小",0,0,0],[6042,"ポテマカサラダ",180,40,20],[6043,"ポテマカサラダ　小",0,0,0],[6044,"野菜の南蛮漬","　",1,1],[6045,"野菜の揚げびたし",0,1,1],[6046,"ラーパッツアイ","　",1,1],[6047,"れんこんサラダ",130,35,20],[6048,"和風サラダ胡麻ドレ",140,35,20],[6049,"和風ポテトサラダ",170,40,20],[6050,"和風ポテトサラダ小",0,0,0],[6051,"菜花とじゃが芋の胡麻マヨ和え",0,40,20],[6052,"根菜の香りサラダ",150,35,20],[6053,"高野と青菜のごま和え",0,25,15],[6054,"ツナマカロニサラダ",185,40,20],[6055,"ミモザサラダ",190,40,20],[6056,"水菜とごぼうのサラダ",100,35,15],[6057,"コロコロ野菜マリネ",0,0,0],[6058,"五色大根サラダ　小",0,0,0],[6059,"ミモザサラダ　小",0,0,0],[6060,"ツナマカロニサラダ　小",0,0,0],[6061,"鶏と枝豆入りひじきサラダ（小）",0,0,0],[6062,"茄子ときゅうりの夏サラダ",0,0,0],[6063,"ごぼうサラダ （小）",0,0,0],[6064,"ごまじゃこサラダ　（小）",0,0,0],[6065,"きんぴらサラダ （小）",0,0,0],[6066,"ひじきのさっぱりサラダ　（小）",0,0,0],[6067,"タイ風サラダ",150,35,15],[6068,"大豆ひじきサラダ(小）",0,0,0],[6069,"季節の温野菜","　",1,1],[6070,"中華サラダ（小）",0,0,0],[6071,"れんこんサラダ（小）",0,0,0],[6072,"中華れんこんサラダ（小）",0,0,0],[6073,"オーロラソースのポテトサラダ",0,0,0],[6074,"根菜サラダ",0,0,0],[6075,"フィッシュバーガーいぶりがっこタルタル",0,0,0],[6076,"切り昆布サラダ（小）",0,0,0],[6077,"人参と豆の塩麹マリネ",0,0,0],[6078,"切干大根ピリコリサラダ",120,35,15],[6079,"春菊と鯖のナムル",0,35,15],[6080,"おからサラダ",0,0,0],[6081,"豆サラダ麹ドレッシング",190,35,25],[6082,"れんこんとひじきのサラダ",140,35,15],[6083,"小豆とさつまいものサラダ鶏ハム入り",230,35,15],[6084,"中華風プルプルサラダ",0,35,15],[6085,"茶そばサラダ仕立て",0,0,0],[6086,"薫るポテサラ",0,0,0],[10001,"イカの唐揚げ１５g",0,2,2],[10002,"糸こんとキノコのきんぴら",0,35,20],[10003,"枝豆入りとり天",6,2,2],[10004,"平田牧場三元豚ヒレかつ",0,2,1],[10005,"和えもの",0,25,20],[10006,"和え物",0,25,15],[10007,"青菜の卵炒め",0,30,20],[10008,"おひたし",0,25,15],[10009,"からし和え",0,25,20],[10010,"カジキ塩レモン焼き４０ｇ",0,40,30],[10011,"白身魚のおろし煮魚",0,2,2],[10012,"魚の塩こうじ焼き",0,2,2],[10013,"魚のマヨ焼き",0,35,25],[10014,"魚のみそ焼き",0,35,25],[10015,"魚の竜田揚げ",4,2,1],[10016,"煮魚",0,35,25],[10017,"魚（サバ）",0,0.25,0.18],[10018,"鯖",0,0.333,0.2],[10019,"寿司類",0,0.5,0],[10020,"卵のマヨ焼き",0,1,1],[10021,"卵焼き",0,1,1],[10022,"中華卵焼き",0,1,1],[10023,"鶏のごま味噌マヨ焼き",0,2,2],[10024,"とり天　２０g",0,2,2],[10025,"ムネ",0,2,2],[10026,"モモ",0,50,25],[10027,"かぼちゃ煮",0,2,1],[10028,"かぼちゃのいとこ煮",0,2,1],[10029,"かぼちゃのそぼろあん",0,2,1],[10030,"チキンのトマト煮",0,2,1],[10031,"にんじんしりしり",0,30,20],[10032,"肉じゃが",0,40,20],[10033,"ミルフィーユ味噌カツ",0,1,1],[10034,"ポークチャップ",50,50,30],[10035,"コロコロ野菜マリネ",0,30,15],[10036,"焼き魚",0,35,25],[10037,"千草焼き",0,1,1],[10038,"ごまあえ",0,25,15],[10039,"生姜焼き　焼肉",0,50,25],[10040,"浅漬け",0,25,20],[10041,"煮卵",0,0.5,0.25],[10042,"とんかつ",0,40,30],[10043,"大根煮物",0,2,2],[10044,"中華卵焼き",0,1,0.5],[10045,"タラの味噌レモン焼き",0,1,0.5],[10046,"ポークチャップ",0,60,30],[10047,"ぶり照り焼き",0,35,25],[10048,"ぶり中華唐揚げ",0,2,1],[10049,"グリーンピースのせしゅうまい",0,0,0],[10050,"鶏のオイマヨ焼",0,2,2],[10051,"ほっけの塩レモン焼き",0,0.2,0.15],[10052,"ぶりの漬け焼き",0,0.2,0.15],[10053,"赤魚の天ぷら",0,0,0],[10054,"きばるゼリー",0,0,0],[10055,"魚の塩麹焼き",0,35,20],[10056,"魚フライ",0,35,20],[10057,"冷凍在庫",0,1,1],[10058,"シルバ味噌漬け焼き",0,35,25],[10059,"きのこのマリネ",0,35,20],[10060,"ミックスフライ",0,0,0],[10061,"魚のカレー焼き",0,0,0]];
+// [hinban, name, onePack(1パック分量g), normalPortion(通常/1食g), kidPortion(子供/1食g)]
+const itemMap = {};
+ITEMS.forEach(it => { itemMap[it[0]] = it; });
+
+const INGREDIENTS = {"22":[["もち米",100],["鶏もも",15],["ごぼう",15],["蓮根",15],["人参",10],["干しいたけ",1.5],["なたね油",4.5],["生姜",1],["料理酒",7.5],["醤油",7.5],["みりん風調味料",7.5],["塩",0.5],["砂糖",1],["だし汁",50],["紅しょうが",2]],"33":[["もち米",135],["あずき",7.5],["塩",0.6],["漬け汁",50],["いりごま黒",2],["塩",1.6]],"88":[["米",165],["むきえびs",27],["水",170],["海老粉",3.5],["玉ねぎ",30],["人参",10],["パセリ",1],["マーガリン",2],["塩",1],["こしょう",0.2],["料理酒",5],["なたね油",1]],"125":[["米",90],["昆布",0.45],["酢",12],["砂糖",10],["塩",2.4],["いりごま白",2],["マグロ缶",21.3],["砂糖",2.3],["醤油",3.5],["みりん風調味料",1.3],["塩",0.12],["卵",0.8],["塩",0.2],["砂糖",1.6],["大葉",0.5],["紅しょうが",2]],"201":[["キャベツ",45],["人参",7],["ミックスチーズ",6],["大葉",1.5],["豚モモスライス",30],["塩",2],["こしょう",0.3],["バッター液",1.5],["パン粉",15],["なたね油",8]],"202":[["鶏むね",60],["玉ねぎ",50],["パン粉",40],["小麦粉",12.5],["卵",0.1],["水",15],["味噌",5.5],["砂糖",1],["みりん風調味料",3],["いりごま白",1.5],["トマトケチャップ",4.5],["中濃ソース",7],["だし汁",7.2],["なたね油",35]],"204":[["豚モモスライス",30],["人参",14],["いんげん",1],["塩",1],["こしょう",1],["バッター液",1],["パン粉",5],["なたね油",3]],"206":[["鶏むね",125],["味噌",5.4],["みりん風調味料",2.7],["なたね油",0.6],["小麦粉",12.5],["卵",0.1],["水",15],["パン粉",30],["なたね油",12.5]],"210":[["鶏むね",75],["塩",0.85],["にんにく",0.5],["七味唐辛子",0.5],["カレー粉",1],["いりごま白",3],["いりごま黒",2.5],["バッター液",2.5],["パン粉",25],["なたね油",7.5]],"211":[["鶏むね",125],["塩",1.33],["こしょう",0.33],["にんにく",1.33],["ポテトチップス",0.025],["パン粉",10],["バッター液",5],["なたね油",10]],"212":[["鶏むね",100],["砂糖",2],["塩",2],["こしょう",0.05],["なたね油",8],["バッター液",1],["パン粉",10]],"223":[["鶏むね",125],["塩",1],["にんにく",1],["七味唐辛子",0.25],["マヨネーズ",5],["いりごま白",1.5],["バッター液",3],["パン粉",30],["なたね油",3]],"228":[["豚ひき肉",42],["塩",0.6],["玉ねぎ",42],["ごぼう",24],["人参",6],["醤油",2.4],["砂糖",0.92],["みりん風調味料",0.8],["料理酒",0.8],["ごま油",1.3],["卵",0.06],["パン粉",12],["牛乳",7.6],["バッター液",2],["なたね油",13],["パン粉",13]],"229":[["もめん豆腐",20],["豚ひき肉",20],["蓮根",8],["玉ねぎ",23],["塩",0.5],["こしょう",0.01],["カレー粉",0.6],["バッター液",1],["パン粉",5],["なたね油",6]],"230":[["たら",90],["醤油",3],["料理酒",2],["マヨネーズ",1.3],["塩",1.3],["こしょう",0.1],["ミックスハーブ",0.15],["パン粉",15.2],["バッター液",4],["なたね油",34],["パセリ",0.1]],"231":[["天然えび",80],["玉ねぎ",40],["片栗粉",3.2],["卵白",0.2],["塩",0.4],["こしょう",0.02],["バッター液",2],["パン粉",20],["なたね油",10]],"233":[["生鮭",90],["塩",1],["こしょう",0.5],["大葉",0.9],["バッター液",3],["パン粉",15],["なたね油",9]],"238":[["蓮根",67],["鶏ひき肉",67],["大葉",1.2],["片栗粉",6],["いりごま白",3.3],["味噌",11.2],["生姜",3],["マヨネーズ",3.8],["塩",0.5],["卵",0.08],["小麦粉",4.1],["なたね油",15]],"301":[["マーガリン",4.5],["小麦粉",5.8],["牛乳",54],["塩",0.54],["こしょう",0.02],["玉ねぎ",18],["ピーマン",0.1],["赤ピーマン",0.05],["マカロニ",9],["卵",0.27],["粉チーズ",1.5],["バッター液",2],["パン粉",10],["なたね油",10]],"305":[["じゃがいも",83.3333],["玉ねぎ",20.8333],["冷凍えだ豆",12.5],["マヨネーズ",10.8333],["塩",0.0333],["パン粉",2],["バッター液",2],["なたね油",10]],"309":[["牛乳",66.6],["マーガリン",12.6],["小麦粉",12.6],["塩",0.4],["こしょう",0.04],["玉ねぎ",26],["南瓜",22.2],["粉チーズ",1.6],["塩",0.4],["こしょう",0.04],["バッター液",2],["パン粉",10],["なたね油",10]],"316":[["じゃがいも",60],["ベーコン",6],["玉ねぎ",40],["牛乳",40],["マーガリン",6],["小麦粉",4],["塩",0.4],["こしょう",0.1],["バッター液",2],["パン粉",16],["なたね油",10]],"326":[["空豆",10.5],["玉ねぎ",22.6],["鶏むね",5.3],["牛乳",80],["マーガリン",13],["小麦粉",13],["塩",0.53],["こしょう",0.15],["バッター液",2],["なたね油",12],["パン粉",20]],"350":[["じゃがいも",110],["玉ねぎ",15],["豚ひき肉",7.5],["マーガリン",2.5],["いりごま黒",9],["塩",0.6],["砂糖",0.3],["バッター液",2],["なたね油",10]],"382":[["しめじ",9],["鶏むね",9],["玉ねぎ",19],["マカロニ",7.6],["マーガリン",6.6],["小麦粉",9.6],["牛乳",73],["塩",0.56],["こしょう",0.1],["ローリエ",0.1],["バッター液",2],["パン粉",20],["なたね油",12]],"384":[["牛乳",80],["マーガリン",14],["小麦粉",14],["冷凍コーン",18],["玉ねぎ",20],["エリンギ",6],["塩",0.7],["こしょう",0.1],["バッター液",2],["パン粉",20],["なたね油",12]],"385":[["鶏むね",6.7],["玉ねぎ",16.7],["マカロニ",5],["塩",0.5],["マーガリン",6],["小麦粉",4.2],["牛乳",75.2],["塩",0.7],["こしょう",0.1],["ローリエ",0.1],["バッター液",2],["パン粉",10],["なたね油",7]],"386":[["じゃがいも",97.2],["玉ねぎ",22.6],["人参",7.2],["豚ひき肉",4],["塩",0.6],["こしょう",0.04],["カレー粉",0.6],["砂糖",0.4],["バッター液",2],["パン粉",20],["なたね油",12]],"391":[["牛乳",86.6],["生鮭",8.3],["玉ねぎ",34.7],["ほうれん草",8],["小麦粉",14.5],["マーガリン",9.5],["塩",0.38],["こしょう",0.05],["料理酒",1],["こしょう",0.05],["バッター液",2],["パン粉",10],["なたね油",6]],"394":[["玉ねぎ",31],["マーガリン",8],["小麦粉",8],["牛乳",60],["海老粉",2],["塩",0.54],["こしょう",0.2],["パセリ",0.35],["スクリューマカロニ",13],["なたね油",7],["バッター液",2],["パン粉",10]],"401":[["もめん豆腐",102],["片栗粉",5],["さつま芋",14],["人参",13],["ごぼう",20],["片栗粉",6],["なたね油",15],["八方だし",16],["砂糖",1.5],["みりん風調味料",3.5],["だし汁",59],["片栗粉",6],["万能ねぎ",1]],"402":[["ごぼう",30],["人参",40],["こんにゃく",60],["厚揚げ",41.25],["大根",100],["干しいたけ",1],["いんげん",2],["なあね油",2.5],["砂糖",7.5],["塩",0.75],["料理酒",2.5],["醤油",8],["だし汁",100]],"403":[["生おから",90],["なたね油",3],["だし汁",80],["醤油",12],["みりん風調味料",7.5],["砂糖",4],["塩",0.3],["干しいたけ",0.3],["竹輪",9],["人参",25],["長ねぎ",12]],"404":[["高野豆腐",1],["だし汁",50],["砂糖",4],["料理酒",3.3],["塩",0.5],["みりん風調味料",3.3],["醤油",3],["なたね油",2.5],["こんにゃく",37.5],["だし汁",20],["砂糖",2],["醤油",3.5],["みりん風調味料",1],["人参",40],["だし汁",25],["砂糖",1.3],["みりん風調味料",1.5],["塩",0.3],["醤油",0.3],["干しいたけ",3],["砂糖",2],["醤油",3.5],["みりん風調味料",1],["いんげん",0.2]],"405":[["玉ねぎ",136],["人参",13.6],["春菊",10],["さつまいも",10],["小麦粉",62],["卵",0.08],["水",51.6],["小麦粉",7.2],["水",6],["なたね油",24]],"406":[["もめん豆腐",100],["茄子",0.3],["南瓜",45],["ピーマン",0.1],["赤ピーマン",0.15],["片栗粉",10],["なたね油",10],["だし汁",46],["八方だし",11],["醤油",3],["砂糖",1.3],["みりん風調味料",3],["片栗粉",2.6]],"407":[["ごぼう",74],["人参",50],["唐辛子",0.05],["なたね油",1],["料理酒",2.4],["醤油",10],["砂糖",4],["みりん風調味料",2],["いりごま白",0.4],["ごま油",1.05]],"408":[["金時豆",56],["砂糖",23.5],["素精糖",18],["醤油",0.7],["塩",0.7]],"409":[["刻み昆布",7],["ごぼう",20],["人参",20],["干しいたけ",0.6],["油揚げ",6.5],["生姜",1.5],["なたね油",3],["砂糖",2.5],["料理酒",2],["醤油",5],["みりん風調味料",2],["だし汁",20]],"410":[["切干大根",12.5],["刻み昆布",2.5],["人参",17.5],["高野豆腐",0.375],["なたね油",0.05],["だし汁",100],["砂糖",3.5],["醤油",9],["料理酒",4.5],["みりん風調味料",4.5],["なたね油",5],["いんげん",2]],"411":[["切干大根",17],["ひじき",2.8],["油揚げ",11],["人参",14],["なたね油",3],["だし汁",70],["醤油",8.4],["砂糖",3.2],["みりん風調味料",3.7],["塩",0.28],["八方だし",2.3]],"412":[["切干大根",17.2727],["人参",16.3636],["油揚げ",11.8182],["だし汁",45.4545],["砂糖",3.6364],["醤油",10],["塩",0.2727],["みりん風調味料",3.1818]],"415":[["高野豆腐",1.1],["油揚げ",10],["人参",20],["干しいたけ",2.4],["いんげん",4],["だし汁",95],["砂糖",8],["料理酒",8],["塩",0.6],["醤油",9]],"416":[["ごぼう",94],["人参",19],["こんにゃく",60],["なたね油",1.5],["唐辛子",0.05],["ごま油",1.2],["いりごま白",1.5],["醤油",9],["砂糖",4.5],["料理酒",3],["みりん風調味料",3],["牡蠣味調味料",1.5],["いんげん",2]],"417":[["ごぼう",70],["人参",30.7],["竹輪",10.5],["こんにゃく",35],["いんげん",2],["なたね油",1.1],["みりん風調味料",5],["醤油",10.2],["砂糖",5],["料理酒",1.4],["いりごま白",1.7],["七味唐辛子",0.1]],"418":[["大豆",36],["こんにゃく",36],["ごぼう",13],["人参",17.5],["昆布",0.9],["砂糖",6],["醤油",8.5],["みりん風調味料",1.7],["だし汁",80]],"419":[["もめん豆腐",107.1429],["ほうれん草",11.9286],["人参",8.9286],["しらたき",17.8571],["砂糖",1.7857],["醤油",2.5714],["だし汁",17.8571],["ねりごま",1.7857],["砂糖",1.2143],["塩",0.2857],["みりん風調味料",2.7143],["醤油",0.5714],["料理酒",0.5714],["八方だし",1.2143]],"420":[["大豆",57.5],["片栗粉",5.5],["なたね油",6],["ちりめんじゃこ",4.5],["人参",16.5],["生姜",4],["砂糖",5.5],["醤油",11],["料理酒",5.5]],"422":[["豚ひき肉",57.7],["玉ねぎ",53.8],["キャベツ",38.5],["しいたけ",1.2],["生姜",1.2],["片栗粉",11.5],["醤油",3.1],["砂糖",1.2],["料理酒",1.5],["塩",1.8],["ごま油",1.5],["こしょう",0.01],["シュウマイの皮",6]],"423":[["鶏むね",40],["蓮根",28],["ごぼう",40],["こんにゃく",60],["干しいたけ",3],["人参",16],["いんげん",1.28],["だし汁",50],["砂糖",5],["醤油",6.5],["塩",0.3],["みりん風調味料",1.5],["料理酒",8],["なたね油",5]],"425":[["豆乳",100],["卵",0.6667],["塩",0.8333],["人参",10],["干しいたけ",1.25],["天然えび",9.1667],["いんげん",1.3333],["だし汁",33.3333],["醤油",6.6667],["みりん風調味料",6.6667],["砂糖",2.1667],["片栗粉",0.8333]],"439":[["じゃがいも",96],["玉ねぎ",35],["人参",14],["豚カタスライス",11.2],["緑豆はるさめ",12],["だし汁",52],["砂糖",5],["みりん風調味料",8],["醤油",8],["なたね油",3]],"453":[["車ふ",0.5],["もめん豆腐",90],["玉ねぎ",30],["人参",10],["万能ねぎ",1],["だし汁",33.3],["砂糖",13.3],["醤油",20],["酢",26.7],["生姜",2],["唐辛子",0.01]],"455":[["ごぼう",36],["干しいたけ",1.2],["こんにゃく",11],["蓮根",11],["だし汁",50],["砂糖",3],["醤油",4.6],["料理酒",4.6],["南瓜",18],["人参",11],["さつまいも",18],["長ねぎ",10],["生おから",30],["だし汁",30],["砂糖",2],["醤油",2.6],["料理酒",2.6]],"457":[["人参",150],["塩",3],["レモン",0.1],["酢",11.5],["なたね油",15],["砂糖",6.8],["粒マスタード",4]],"460":[["干しいたけ",2],["えのき",11.1111],["しめじ",11.1111],["まいたけ",11.1111],["醤油",1.6667],["もめん豆腐",100],["ねりごま",1.7778],["砂糖",1.2222],["塩",0.2778],["みりん風調味料",2.6667],["醬油",0.5556],["料理酒",0.5556],["八方だし",1.2222],["さつまいも",5]],"461":[["トマトケチャップ",50],["玉ねぎ",80],["セロリ",13],["なたね油",3],["洋風だし",0.8],["にんにく",0.5],["唐辛子",0.1],["トマト",0.2],["強力粉",13],["じゃがいも",50],["塩",0.8],["なたね油",20],["パセリ",2]],"462":[["蓮根",70],["人参",50],["唐辛子",0.2],["なたね油",3],["料理酒",2],["醤油",10],["砂糖",4],["みりん風調味料",2],["いりごま白",0.4],["ごま油",1.5]],"463":[["ごぼう",85],["砂糖",2.5],["醤油",3.8],["みりん風調味料",5],["いりごま白",1],["片栗粉",5],["なたね油",6]],"464":[["切干大根",16],["人参",15],["胡瓜",0.3],["だし汁",18],["醤油",3],["酢",12],["砂糖",4],["塩",1.6],["いりごま白",10],["酢",5],["砂糖",5.6],["塩",0.25]],"465":[["車ふ",1],["だし汁",180],["醤油",7],["みりん風調味料",10],["料理酒",10],["砂糖",10],["塩",1.2],["なたね油",40],["人参",30],["いんげん",4]],"467":[["ごぼう",70],["人参",20],["水菜",20],["きくらげ",1],["油揚げ",3],["いりごま白",12],["砂糖",3.5],["醤油",5.5],["料理酒",10]],"468":[["蓮根",60],["大根",60],["すいとん粉",30],["醤油",0.5],["塩",0.5],["だし汁",30],["みりん風調味料",3],["醤油",3],["片栗粉",1.5],["万能ねぎ",3],["ゆず",0.01],["なたね油",3]],"717":[["卵",0.5],["牛乳",72],["素精糖",9.6],["砂糖",5],["水",4]],"5003":[["豚ひき肉",48],["玉ねぎ",48],["キャベツ",25],["生姜",1],["片栗粉",1],["醤油",2.8],["砂糖",1.4],["料理酒",1.3],["塩",0.77],["ごま油",1.27],["こしょう",0.17],["シュウマイの皮",5],["小麦粉",5],["卵",0.04],["水",3],["なたね油",15]],"5004":[["茄子",1.5],["なたね油",7.5],["鶏ひき肉",11.3],["長ねぎ",3],["生姜",1.1],["砂糖",3],["味噌",10.3],["大葉",1.5]],"5005":[["玉ねぎ",65],["人参",6],["春菊",5],["小麦粉",28],["卵",0.1],["水",23],["さつまいも",30],["南瓜",30],["なたね油",5]],"5007":[["鶏ひき肉",78],["えのき",63],["玉ねぎ",32],["人参",6.5],["卵",0.2],["砂糖",1.6],["塩",1],["醤油",3],["片栗粉",13],["料理酒",1],["生姜",1.5],["砂糖",2.2],["醤油",6.5],["みりん風調味料",6.5],["水",35],["片栗粉",3]],"5010":[["豚ひき肉",60],["玉ねぎ",40],["しめじ",20],["えのき",20],["塩",0.3],["醤油",2.1],["こしょう",0.04],["パン粉",5],["牛乳",8],["卵",0.2],["大葉",1],["砂糖",4],["料理酒",2],["醤油",4.5],["みりん風調味料",3],["水",16],["片栗粉",1]],"5011":[["豚ひき肉",28],["長ねぎ",3.5],["キャベツ",70],["干しいたけ",0.6],["ニラ",10],["ギョウザの皮",7],["砂糖",0.5],["料理酒",1.5],["醤油",1.5],["塩",1],["生姜",1],["味噌",0.7],["にんにく",1],["ごま油",1.5],["なたね油",15]],"5013":[["車ふ",1],["鶏ひき肉",16.5],["人参",6.5],["玉ねぎ",10],["生姜",1.5],["塩",0.3],["こしょう",0.3],["醤油",1.5],["片栗粉",5],["たれ",1.7],["醤油",5],["みりん風調味料",5],["砂糖",5],["片栗粉",5],["なたね油",57]],"5014":[["鶏むね",125],["生姜",1.25],["にんにく",0.5],["醤油",4.5],["ごま油",1],["塩",1.75],["料理酒",1.25],["水",35],["砂糖",1.5],["卵",0.15],["片栗粉",5],["小麦粉",5],["パン粉",5],["水",10],["なたね油",18]],"5015":[["高野豆腐",2],["鶏ひき肉",25],["人参",7],["いんげん",2],["干しいたけ",0.9],["卵",0.1],["料理酒",1.5],["醤油",1.5],["塩",0.5],["生姜",0.5],["だし汁",60],["みりん風調味料",10],["砂糖",7.5],["醤油",3],["塩",1.5],["料理酒",2.5]],"5016":[["高野豆腐",2],["はんぺん",11.5],["天然えび",6.1],["人参",8],["卵白",0.07],["料理酒",1.1],["塩",0.23],["片栗粉",2.3],["だし汁",92.5],["砂糖",11.5],["みりん風調味料",15.3],["醤油",2.3],["塩",1.5],["料理酒",3.8]],"5017":[["赤魚",100],["レモン塩",2],["料理酒",2],["バッター液",2.5],["パン粉",40],["なたね油",5]],"5021":[["生鮭",80],["塩",2],["こしょう",0.7],["小麦粉",20],["なたね油",8],["玉ねぎ",28.2],["赤ピーマン",0.0093],["ピーマン",0.0375],["人参",2.1],["トマト",0.0375],["ローリエ",0.1],["酢",6],["なたね油",10],["砂糖",0.81],["塩",0.63],["こしょう",0.06]],"5022":[["鶏むね",40],["塩",0.5],["料理酒",1],["さつまいも",60],["蓮根",40],["片栗粉",10],["なたね油",1],["醤油",8],["砂糖",8],["酢",4],["いりごま黒",1.5]],"5023":[["さば",66.6667],["料理酒",2.9167],["生姜",0.8333],["塩",0.8333],["醤油",1.25],["片栗粉",1.8333],["なたね油",1.25],["豆板醤",0.25],["トマトケチャップ",16.6667],["料理酒",5.4167],["醤油",5.4167],["中華だし",0.4167],["水",16.6667],["砂糖",2.25],["みりん風調味料",1.6667],["長ねぎ",4.1667],["にんにく",0.4167],["生姜",0.4167],["ごま油",0.5833]],"5024":[["めだい",90],["塩",1],["砂糖",0.8],["料理酒",1],["じゃがいも",60],["塩",0.5],["こしょう",0.01],["なたね油",2.5],["大葉",1],["オリーブオイル",1],["なたね油",1],["粉チーズ",0.5],["にんにく",0.2],["塩",0.2]],"5032":[["じゃがいも",50],["人参",16.7],["大豆",10.7],["金時豆",14.7],["金時豆",10.7],["豚ひき肉",40],["玉ねぎ",40],["生姜",2],["トマトピューレ",20],["トマトケチャップ",15],["塩",1.5],["砂糖",1.3],["豆板醤",0.2],["なたね油",2],["パセリ",3]],"5033":[["ギョウザの皮",7],["豚ひき肉",30],["キャベツ",50],["緑豆はるさめ",5],["ザーサイ",20],["ごま油",1.5],["こしょう",0.05],["生姜",3],["なたね油",6]],"5035":[["鶏むね",108.3333],["砂糖",1.0833],["塩",1.0833],["塩麹",5],["小麦粉",10.8333],["なたね油",5.4167],["だし汁",29.1667],["砂糖",11.6667],["醤油",16.6667],["酢",23.3333],["生姜",1.6667],["唐辛子",0.0833],["玉ねぎ",66.6667],["赤ピーマン",0.0417],["パセリ",0.4167]],"5036":[["鶏むね",150],["塩麹",10],["生姜",0.5],["にんにく",0.5],["料理酒",1.5],["塩",0.6],["片栗粉",5],["小麦粉",5],["パン粉",5],["卵",0.2],["なたね油",13.8]],"5037":[["鶏ひき肉",100],["玉ねぎ",75],["大葉",1],["塩",1.3],["こしょう",0.1],["卵",0.1],["料理酒",2.5],["片栗粉",4],["パン粉",8],["醤油",3],["料理酒",3],["みりん風調味料",3],["砂糖",3],["水（ｃｃ）",19]],"5038":[["豚ひき肉",57.7],["玉ねぎ",53.8],["キャベツ",38.5],["しいたけ",1.2],["生姜",1.2],["片栗粉",11.5],["醤油",3.1],["砂糖",1.2],["料理酒",1.5],["塩",1.8],["ごま油",1.5],["こしょう",0.01],["シュウマイの皮",6]],"5041":[["豚ひき肉",41],["大根",47],["塩",0.23],["ニラ",7.4],["醤油",2.4],["生姜",2],["ごま油",0.9],["片栗粉",3.8],["塩",0.23],["こしょう",0.05],["ギョウザの皮",7],["なたね油",4]],"5042":[["さば",120],["料理酒",3.5],["生姜",1],["塩",1],["こしょう",0.02],["なたね油",9],["バッター液",3],["パン粉",15]],"5043":[["さつまいもはるさめ",19.6],["人参",15.6],["小松菜",23.4],["玉ねぎ",15.6],["赤ピーマン",0.078],["豚モモスライス",7.8],["干しいたけ",1.4],["醤油",3.1],["みりん風調味料",4.7],["長ねぎ",1.9],["砂糖",0.5],["にんにく",0.8],["料理酒",0.8],["ごま油",3.9],["砂糖",2.3],["醤油",9.8],["いりごま白",3.1],["卵",0.23],["砂糖",0.23],["塩",0.15]],"5044":[["鶏ひき肉",100],["玉ねぎ",64],["卵",0.15],["パン粉",8],["塩",1.6],["こしょう",0.1],["料理酒",3.6],["生姜",0.8],["砂糖",21.2],["醤油",12],["中華だし",0.5],["牡蠣味調味料",2.5],["片栗粉",3],["なたね油",9]],"5046":[["鶏手羽先",300],["マーマレードジャム",12.5],["醤油",12.5],["塩",2]],"5047":[["鶏むね",20],["塩",0.4],["料理酒",1],["万能ねぎ",1.6],["水菜",20],["大根",70],["ザーサイ",30],["ごま油",3],["料理酒",5],["塩",0.5],["醤油",2.5],["赤ピーマン",0.03]],"5048":[["鶏むね",75],["醤油",3],["料理酒",3],["卵",0.1],["茄子",1],["ピーマン",0.1],["赤ピーマン",0.05],["玉ねぎ",30],["洋風だし",1.5],["砂糖",7],["醤油",7],["酢",11],["トマトケチャップ",10],["なたね油",4],["片栗粉",2]],"5049":[["鶏むね",84],["塩",0.83],["醤油",1.7],["料理酒",1.7],["砂糖",0.67],["生姜",1.3],["人参",9],["ごぼう",10],["春菊",6.5],["玉ねぎ",17],["塩",0.3],["卵",0.15],["片栗粉",5],["小麦粉",8],["水",15],["なたね油",15]],"5050":[["鶏手羽先",190],["卵",1],["大根",80],["生姜",5],["にんにく",1],["醤油",30],["酢",30],["砂糖",12],["唐辛子",0.06],["水",100],["いんげん",3],["人参",30]],"5051":[["鶏ひき肉",107],["玉ねぎ",80],["卵",0.3],["パン粉",18.5],["生姜",3],["料理酒",5],["塩",1],["こしょう",0.3],["醤油",12],["料理酒",5],["みりん風調味料",5],["砂糖",6.5],["水（ｃｃ）",48],["片栗粉",0.8]],"5059":[["豚ひき肉",20],["塩",1.4],["もめん豆腐",85.7],["卵",0.15],["こしょう",0.1],["玉ねぎ",47],["ひじき",2.1],["人参",24],["なたね油",2.8],["水",12],["醤油",2.8],["小麦粉",5],["だし汁",21],["砂糖",2.1],["醤油",3.1],["生姜",1],["片栗粉",1.5],["人参",5],["いんげん",1.3]],"5061":[["ひじき",1.8],["鶏ひき肉",68],["キャベツ",72],["玉ねぎ",18],["マヨネーズ",2.1],["塩",0.6],["こしょう",0.1],["パン粉",3.6],["大葉",0.9],["人参",10],["醤油",8],["みりん風調味料",4],["料理酒",4],["砂糖",6],["水",20],["片栗粉",2.4]],"5063":[["茄子",1.5],["なたね油",10],["豚ひき肉",7],["生姜",1.5],["にんにく",1.5],["長ねぎ",7],["醤油",4],["料理酒",4],["豆板醤",0.2],["砂糖",0.4],["こしょう",0.1],["味噌",1.5],["スープ",14],["片栗粉",3]],"5064":[["緑豆はるさめ",30],["豚カタスライス",16],["人参",12],["ピーマン",0.1],["干しいたけ",1.8],["たけのこ",7],["砂糖",1.5],["醤油",10],["牡蠣味調味料",0.5],["塩",1],["中華だし",1],["なたね油",3],["豆板醤",0.3],["片栗粉",2.5],["水",50]],"5065":[["豚ひき肉",35],["鶏ひき肉",64],["玉ねぎ",70],["卵",0.2],["牛乳",14],["パン粉",14],["塩",1],["こしょう",0.2],["料理酒",1.4],["醤油",1.4],["片栗粉",0.7],["トマトケチャップ",10.7],["中華だし",1],["水",24],["中濃ソース",9],["片栗粉",2.3],["なたね油",10]],"5068":[["鶏むね",120],["塩",0.6],["こしょう",0.1],["八方だし",12],["酢",7.5],["レモン果汁",6],["砂糖",2.4],["片栗粉",7.2],["なたね油",12],["キャベツ",35],["ごま油",1.2],["塩",0.27],["いりごま白",2.7]],"5069":[["豚ひき肉",10],["長ねぎ",1.1],["生姜",0.25],["卵",0.025],["醤油",0.38],["料理酒",0.38],["塩",0.12],["みりん風調味料",0.53],["片栗粉",0.2],["蓮根",30],["バッター液",1],["なたね油",4]],"5070":[["蓮根",80],["豚ひき肉",19],["玉ねぎ",12],["料理酒",0.4],["塩",0.12],["こしょう",0.05],["だし汁",32],["砂糖",3.2],["八方だし",3],["醤油",2.4],["酢",2.4],["片栗粉",0.4]],"5071":[["キャベツ",210],["豚ひき肉",48],["玉ねぎ",22.8],["人参",10.3],["塩",0.6],["こしょう",0.1],["卵",0.3],["洋風だし",0.4],["トマトジュース",6.8],["トマトケチャップ",20],["ウスターソース",4],["塩",0.3],["砂糖",0.6]],"5072":[["ごぼう",80],["こんにゃく",60],["鶏もも",45],["料理酒",1.5],["万能ねぎ",1],["砂糖",6],["料理酒",3],["みりん風調味料",6],["醤油",7.5],["だし汁",20]],"5076":[["鶏むね",95],["醤油",1],["料理酒",1],["片栗粉",9.5],["大根",36],["長ねぎ",10],["ごま油",3.1],["醤油",9],["砂糖",3.2],["水",4.5],["万能ねぎ",2],["人参",10],["しめじ",10],["なたね油",10]],"5078":[["鶏むね",125],["塩",1],["スイートチリ",8],["牡蠣味調味料",2],["ナンプラー",3],["トマトケチャップ",2],["砂糖",2],["小麦粉",12],["卵",0.1],["小麦粉",7],["片栗粉",7],["なたね油",12.5]],"5079":[["生鮭",60],["レモン塩",5],["料理酒",3],["小麦粉",10],["なたね油",6],["人参",14],["レモン塩",1],["玉ねぎ",60],["料理酒",5],["醤油",10],["砂糖",9],["酢",5],["だし汁",25],["唐辛子",0.2]],"5085":[["鶏むね",100],["塩",0.5],["こしょう",0.1],["片栗粉",10],["人参",18],["赤ピーマン",0.1],["ピーマン",0.3],["たけのこ水煮",4],["玉ねぎ",50],["なたね油",8.3],["醤油",6],["牡蠣味調味料",2.5],["料理酒",6],["砂糖",3.3],["片栗粉",1.5],["水（ｃｃ）",20.8]],"5087":[["油揚げ",37.5],["もやし",0.25],["豚ひき肉",11.6667],["鶏ひき肉",11.6667],["ニラ",4.1667],["醤油",3.1667],["牡蛎味調味料",3.1667],["ごま油",0.4167],["生姜",1],["にんにく",0.125],["塩",0.3333],["こしょう",0.0833]],"5088":[["鶏むね",60],["料理酒",3],["ごま油",3],["にんにく",0.4],["生姜",3],["高野豆腐",1],["片栗粉",10],["茄子",0.25],["赤ピーマン",0.08],["ピーマン",0.08],["みりん風調味料",9],["砂糖",10],["醤油",15],["酢",6],["水",24],["片栗粉",1.8],["いりごま白",6],["なたね油",9]],"5093":[["卵",2],["鶏ひき肉",100],["玉ねぎ",50],["卵",0.2],["小麦粉",6],["料理酒",3],["砂糖",2.6],["塩",0.8],["片栗粉",10],["醤油",10],["みりん風調味料",10],["料理酒",10],["砂糖",3.4],["なたね油",10]],"5095":[["めだい",50],["醤油",1.5],["生姜",1],["片栗粉",1],["なたね油",1.5],["玉ねぎ",100],["干しいたけ",3],["ピーマン",0.2],["水",12],["酢",8],["砂糖",10],["醤油",9],["トマトケチャップ",9],["ごま油",1.8],["片栗粉",0.8]],"5102":[["鶏手羽元",200],["塩",2],["ヨーグルト",9.2],["にんにく",0.6],["生姜",0.6],["レモン",0.025],["トマトケチャップ",1.5],["カレー粉",0.6],["醤油",1.5]],"5104":[["鶏むね",40],["玉ねぎ",7],["塩",0.6],["にんにく",0.25],["砂糖",0.3],["洋風だし",0.8],["水",5],["小麦粉",10],["卵",0.05],["酢",1.5],["強力粉",10],["小麦粉",3.5],["ブラックペッパー",0.1],["なたね油",4]],"5108":[["鶏ささみ",120],["醤油",10],["料理酒",5],["塩",1],["いりごま白",5],["いりごま黒",2]],"5109":[["鶏ひき肉",30],["キャベツ",50],["玉ねぎ",40],["大葉",2],["蓮根",20],["塩",1],["砂糖",0.5],["醤油",1.5],["料理酒",1.5],["生姜",1],["味噌",0.7],["ごま油",1.5],["ギョウザの皮",7],["なたね油",10]],"5110":[["鶏むね",115],["砂糖",5],["塩",3.3333],["こしょう",0.3333],["片栗粉",10],["コチュジャン",7],["トマトケチャップ",6],["醤油",3.3333],["みりん風調味料",3.3333],["砂糖",1.3333],["にんにく",1],["いりごま白",0.6667],["なたね油",16.6667]],"5114":[["油揚げ",24.5],["もめん豆腐",30],["鶏ひき肉",56.3],["しいたけ",2.7],["人参",9.2],["パン粉",4.8],["生姜",1.5],["人参",5],["いんげん",1.5],["だし汁",45],["醤油",6],["砂糖",3],["みりん風調味料",4.5]],"5115":[["豚ひき肉",15],["玉ねぎ",60],["片栗粉",8],["鶏ひき肉",15],["たけのこ水煮",12],["しいたけ",1.2],["天然えび",30],["塩",1],["砂糖",1],["こしょう",0.1],["ごま油",1.5],["生姜",1.2],["シュウマイの皮",5],["海老粉",0.19]],"5117":[["鶏ささみ",80],["塩",0.8],["こしょう",0.1],["バッター液",1],["パン粉",10],["つぶれ梅",5],["みりん風調味料",2.5],["砂糖",2.5],["味噌",2.5],["醤油",2.5],["かつお節",0.1],["大葉",1]],"5120":[["シュウマイの皮",5],["豚ひき肉",20],["鶏ひき肉",40],["玉ねぎ",33.3333],["ニラ",11.1111],["エコシュリンプ",5.5556],["生姜",3.3333],["ごま油",3.3333],["醤油",3.3333],["塩",0.5556],["砂糖",0.6667],["料理酒",3.3333],["片栗粉",4]],"5121":[["さば",120],["醤油",2],["料理酒",7],["カレー粉",1.2],["なたね油",20],["小麦粉",16.7],["卵",0.17],["水",25]],"5122":[["鶏むね",80],["塩",0.4],["こしょう",0.05],["卵",0.05],["片栗粉",1.2],["じゃがいも",40],["セロリ",20],["長ねぎ",20],["なたね油",3],["生姜",2],["豆板醤",0.25],["醤油",10],["砂糖",6],["酢",9],["料理酒",5],["こしょう",0.1],["片栗粉",1.2]],"5125":[["ぶり",80],["じゃがいも",48],["小麦粉",1.5],["味噌",22.5],["砂糖",9],["料理酒",9],["にんにく",0.45],["水",36],["なたね油",3],["万能ねぎ",2]],"5126":[["鶏むね",75],["鶏もも",69],["醤油",10],["料理酒",10],["砂糖",2.25],["にんにく",1.2],["生姜",2.25],["塩",1.125],["水",18],["小麦粉",5],["片栗粉",12],["なたね油",18]],"5127":[["鶏むね",100],["砂糖",1],["塩",1],["こしょう",0.02],["小麦粉",12],["卵",0.5],["なたね油",20],["醤油",5],["みりん風調味料",1.25],["酢",5],["砂糖",5],["塩",0.125],["七味唐辛子",0.005],["卵",1.4],["マヨネーズ",23.5],["パセリ",1]],"5128":[["生鮭",100],["じゃがいも",60],["マーガリン",10],["牛乳",30],["塩",0.6],["こしょう",0.7],["パセリ",2]],"5129":[["鶏もも",75],["大根",100],["卵",1],["だし汁",108],["料理酒",20],["砂糖",6],["醤油",9],["カレー粉",0.5],["だし汁",18],["片栗粉",6],["みりん風調味料",6],["万能ねぎ",2]],"5130":[["生鮭",90],["料理酒",0.9],["ながいも",50],["味噌",2.4],["マヨネーズ",4.8],["ミックスチーズ",6],["パセリ",0.5]],"5132":[["じゃがいも",72.6667],["玉ねぎ",35.8333],["生鮭",50],["塩",0.5],["しめじ",16.6667],["マーガリン",11.1667],["小麦粉",11.25],["塩",1],["牛乳",132.25],["こしょう",0.0833],["ミックスチーズ",8]],"6001":[["ひじき",12],["玉ねぎ",28],["人参",8.3],["セロリ",8],["いか",20],["なたね油",10],["酢",20],["砂糖",4.5],["塩",2.5],["こしょう",0.1]],"6006":[["南瓜",135],["玉ねぎ",35],["パセリ",1.25],["砂糖",1.8],["塩",0.9],["酢",10],["こしょう",0.05],["なたね油",20],["なたね油",6.5]],"6007":[["南瓜",23.4],["さつまいも",23.4],["マカロニ",22.7],["胡瓜",0.15],["酢",7],["砂糖",0.8],["カレー粉",0.8],["マヨネーズ",15.6],["塩",0.6]],"6009":[["キャベツ",156],["冷凍コーン",18.1],["玉ねぎ",26],["人参",13],["胡瓜",0.1],["ドレッシング",14],["マヨネーズ",20],["塩",0.3],["こしょう",0.1]],"6011":[["ごぼう",70],["こんにゃく",30],["竹輪",6],["ごま油",1.4],["なたね油",1.4],["醤油",4],["みりん風調味料",1.4],["砂糖",1.4],["人参",11.5],["大根",26],["胡瓜",0.1],["セロリ",7],["ごま油",0.9],["醤油",1.9],["砂糖",1.9],["塩",0.5],["酢",2.8],["いりごま白",2.8]],"6012":[["刻み昆布",15],["大根",30],["人参",12],["胡瓜",0.18],["醤油",6],["酢",9],["砂糖",2.5],["塩",0.4],["いりごま白",1.1]],"6013":[["ごぼう",85],["人参",31],["胡瓜",0.2],["酢",6.5],["砂糖",6.5],["塩",0.77],["マヨネーズ",21.8],["八方だし",1.8],["いりごま白",1.8],["ねりごま",1.8]],"6015":[["じゃがいも",150],["塩",0.9],["砂糖",1.2],["人参",12],["クレソン",13],["ごま油",2.9],["にんにく",0.5],["豆板醤",0.1],["いりごま白",3.2],["マヨネーズ",16]],"6016":[["鶏ささみ",15],["塩",0.5],["料理酒",3],["ちりめんじゃこ",2.7],["ごま油",0.5],["キャベツ",40],["水菜",20],["セロリ",10],["胡瓜",0.2],["人参",8],["いりごま白",2.5],["玉ねぎ",10],["醤油",3],["酢",20],["ごま油",3],["塩",1],["砂糖",5]],"6017":[["大根",300],["人参",15],["油揚げ",6],["水菜",10],["干しいたけ",0.9],["砂糖",6.3],["醤油",6.3],["砂糖",8],["酢",26.7],["塩",1.3],["だし汁",6.6],["砂糖",4],["酢",13.3],["だし汁",3.3],["いりごま白",3.3]],"6018":[["じゃがいも",112.5],["人参",10.4],["胡瓜",0.2],["冷凍コーン",5.8],["赤玉ねぎ",8],["レタス",5.8],["キャベツ",10.4],["ドレッシング",8.3],["マヨネーズ",27.8],["塩",0.2],["砂糖",0.1],["こしょう",0.02]],"6020":[["もやし",0.22],["醤油",1.8],["ごま油",1.1],["唐辛子",0.03],["いりごま白",0.8],["塩",1.1],["人参",45.4],["長ねぎ",2.7],["ごま油",1.6],["唐辛子",0.03],["にんにく",0.55],["醤油",5.4],["いりごま白",0.9],["砂糖",0.45],["小松菜",54.5],["醤油",4],["ごま油",0.8],["唐辛子",0.03],["砂糖",0.45],["いりごま白",0.7],["いりごま白",2.5]],"6021":[["白菜",140],["干しいたけ",2.7],["人参",17],["生姜",3],["醤油",9.5],["酢",9.5],["ごま油",4],["砂糖",6],["唐辛子",0.3],["塩",2]],"6022":[["ほうれん草",90],["人参",36.6],["まぐろ油漬け",16.3],["いりごま白",2.8],["酢",1.7],["醤油",4.2],["砂糖",1.7],["塩",0.3]],"6025":[["ひじき",10.5],["ごま油",0.9],["醤油",1.5],["料理酒",1.5],["玉ねぎ",19],["大豆",11],["人参",4.3],["胡瓜",0.2],["醤油",7.5],["料理酒",7.5],["砂糖",1.3],["酢",7.5]],"6026":[["緑豆はるさめ",14],["人参",11],["セロリ",9],["胡瓜",0.15],["ハム",3.5],["塩蔵わかめ",1],["卵",0.3],["砂糖",0.6],["塩",0.2],["酢",6],["ごま油",4.5],["砂糖",2.5],["塩",0.2],["醤油",7.5]],"6027":[["蓮根",70],["ごぼう",50],["人参",12],["胡瓜",0.225],["塩",0.2],["醤油",4.2],["酢",4.2],["ごま油",2.1],["長ねぎ",2.1],["ラー油",0.35],["醤油",3.5],["酢",5],["砂糖",2.1],["塩",0.7],["ごま油",4.2]],"6028":[["じゃがいも",85],["人参",15],["キャベツ",26],["玉ねぎ",18.5],["冷凍コーン",14.5],["胡瓜",0.2],["マグロ缶",8],["ドレッシング",8.3],["砂糖",0.7],["塩",1],["こしょう",0.05],["マヨネーズ",13]],"6030":[["ひじき",5],["人参",15],["胡瓜",0.2],["玉ねぎ",25],["鶏むね",24],["えだまめ",15],["生姜",2.5],["なたね油",2.5],["ごま油",2.5],["酢",9.5],["八方だし",19]],"6044":[["南瓜",45],["茄子",0.5],["胡瓜",0.5],["かぶ",50],["人参",20.8333],["生姜",1.6667],["ごま油",1.25],["だし汁",16.6667],["酢",16.6667],["唐辛子",0.05],["砂糖",12.5],["醤油",8.3333],["塩",1.5]],"6045":[["茄子",0.5],["ブロッコリー",38],["いんげん",3.2],["蓮根",20],["南瓜",30],["人参",21],["だし汁",36],["みりん風調味料",9],["醤油",9],["かつお節",0.3],["万能ねぎ",2.31],["生姜",4],["いりごま白",3]],"6046":[["大根",110],["胡瓜",0.4],["セロリ",12],["人参",20],["塩",3],["酢",12],["砂糖",10],["塩",2.4],["生姜",5],["唐辛子",0.5],["ごま油",4.5]],"6047":[["蓮根",111.5],["人参",15],["酢",7.5],["砂糖",7.5],["塩",0.45],["胡瓜",0.15],["いりごま白",2.7],["味噌",5.4],["砂糖",1.15],["塩",0.55],["マヨネーズ",17.7],["いりごま白",1.5]],"6048":[["大根",70],["人参",10],["胡瓜",0.16],["セロリ",8],["レタス",16],["きくらげ",0.8],["こんにゃく",25],["醤油",5],["みりん風調味料",1.25],["砂糖",1.6],["料理酒",1.25],["玉ねぎ",11],["にんにく",0.4],["醤油",5.8],["酢",8],["砂糖",1.4],["塩",0.2],["なたね油",11],["いりごま白",2]],"6049":[["じゃがいも",105],["さつまいも",17],["胡瓜",0.2],["人参",10],["大豆",4],["金時豆",4],["塩",0.6],["八方だし",2],["マヨネーズ",21],["かつお節",1]],"6052":[["ごぼう",21],["大根",23.5],["人参",8],["塩",0.5],["生姜",2.6],["干しいたけ",2.4],["緑豆はるさめ",10],["セロリ",20],["水菜",16],["胡瓜",0.15],["なたね油",4.7],["砂糖",5],["いりごま白",2.5],["醤油",10],["料理酒",4],["塩",0.8],["ごま油",5]],"6054":[["じゃがいも",84],["マカロニ",18.5],["人参",12],["玉ねぎ",11],["胡瓜",0.1],["まぐろ油漬け",7],["ドレッシング",6],["砂糖",0.4],["塩",0.1],["マヨネーズ",30]],"6055":[["じゃがいも",140],["人参",13],["玉ねぎ",13],["胡瓜",0.1],["卵",0.3],["フレンチドレッシング",3],["塩",0.7],["こしょう",0.1],["砂糖",0.9],["マヨネーズ",40]],"6056":[["ごぼう",28.5],["人参",17.8],["水菜",14.2],["マグロ缶",10],["冷凍コーン",14.2],["いりごま白",4.7],["ごま油",3.6],["味噌",3.9],["酢",5.7],["砂糖",2.5],["醤油",1.1]],"6067":[["緑豆はるさめ",24],["きくらげ",1],["セロリ",10],["人参",10],["鶏むね",30],["豆板醤",0.3],["砂糖",3],["塩",2],["酢",10],["醤油",6],["ごま油",6],["ナンプラー",2]],"6069":[["さつまいも",60],["人参",30],["南瓜",45],["蓮根",45],["いんげん",5],["チーマージャン",9],["醤油",19],["砂糖",8],["酢",9],["長ねぎ",7],["生姜",2],["ラー油",0.2],["ごま油",1.2]],"6078":[["切干大根",15],["きくらげ",2.5],["豚カタスライス",8],["胡瓜",0.16],["豆板醤",0.25],["砂糖",5],["醤油",7.5],["ごま油",5],["いりごま白",1.5],["マヨネーズ",21],["赤ピーマン",0.025]],"6079":[["乾燥おから",10],["水（cc）",40],["まぐろ油漬け",7],["胡瓜",0.2],["玉ねぎ",20],["人参",8],["かつお節",2],["マヨネーズ",16],["醤油",1.2],["塩",0.1],["こしょう",0.1]],"6081":[["大豆",16.6667],["金時豆",13.8889],["人参",16.6667],["玉ねぎ",5.5556],["ズッキーニ",11.1111],["赤玉ねぎ",5.5556],["オリーブオイル",2.5],["酢",5],["塩麹",2.5],["こしょう",0.1111]],"6083":[["あずき",19.1667],["さつまいも",33.3333],["じゃがいも",33.3333],["ドレッシング",10],["鶏むね",29.1667],["砂糖",1.25],["塩",1.25],["ミックスハーブ",0.0417],["ローリエ",0.0833],["水",29.1667],["玉ねぎ",16.6667],["水菜",16.6667],["ヨーグルト",12.5],["マヨネーズ",27.5],["砂糖",2.9167],["塩",1.6667],["ブラックペッパー",0.0833],["赤ピーマン",0.0167]],"10001":[["いか",120],["にんにく",0.5],["生姜",0.5],["塩",0.8],["砂糖",0.6],["こしょう",0.1],["醤油",5],["強力粉",15],["卵",0.1],["水",6],["片栗粉",15],["なたね油",6]],"10020":[["卵",0.5],["マヨネーズ",8.3333],["塩",0.1667],["砂糖",0.0833],["トマトケチャップ",2]],"10028":[["南瓜",180],["あずき",40],["砂糖",16],["醤油",0.3],["塩",1]],"10033":[["おかわり肉みそ",20],["豚カタスライス",90],["バッター液",3],["パン粉",15],["なたね油",9]],"458":[["金時豆",56],["砂糖",23.5],["素精糖",18],["醤油",0.7],["塩",0.7]],"10049":[["豚ひき肉",57.7],["玉ねぎ",53.8],["キャベツ",38.5],["しいたけ",1.2],["生姜",1.2],["片栗粉",11.5],["醤油",3.1],["砂糖",1.2],["料理酒",1.5],["塩",1.8],["ごま油",1.5],["こしょう",0.01],["シュウマイの皮",6]],"5001":[["油揚げ",15],["卵",1],["だし汁",50],["醤油",5],["砂糖",3],["みりん風調味料",1.75],["料理酒",0.9],["塩",0.15],["こんにゃく",37.5],["だし汁",20],["砂糖",2],["醤油",3.5],["みりん風調味料",1],["人参",30],["だし汁",18.8],["砂糖",0.975],["みりん風調味料",1.125],["塩",0.225],["醤油",0.225],["干しいたけ",3],["砂糖",2],["醤油",3.5],["みりん風調味料",1],["小松菜",10]],"5111":[["豚ひき肉",57.7],["玉ねぎ",57.7],["小松菜",35],["しいたけ",1.2],["生姜",1.2],["片栗粉",11.5],["醤油",3.1],["砂糖",1.2],["料理酒",1.5],["塩",0.9],["ごま油",1.5],["こしょう",0.01],["シュウマイの皮",6]],"5119":[["豚ひき肉",20],["鶏ひき肉",20],["鶏もも",10],["玉ねぎ",53.8],["キャベツ",38],["しいたけ",1.8],["生姜",1.2],["たけのこ",13],["片栗粉",11.5],["醤油",3.1],["砂糖",1.2],["料理酒",1.5],["塩",1.8],["ごま油",1.5],["こしょう",0.01],["シュウマイの皮",6]],"6082":[["蓮根",46.5],["ひじき",3],["人参",20],["胡瓜",0.25],["冷凍コーン",14.5],["マヨネーズ",14.5],["いりごま白",3.5],["醤油",2.1],["酢",1.4],["砂糖",0.5],["塩",1.2],["こしょう",0.01]],"205":[["鶏ささみ",45],["大葉",1],["塩",0.45],["こしょう",0.1],["パン粉",5],["バッター液",1],["なたね油",4.5]],"5094":[["もめん豆腐",100],["南瓜",8],["茄子",0.1],["ピーマン",0.1],["赤ピーマン",0.1],["豚ひき肉",27],["生姜",1.5],["長ねぎ",2],["味噌",8],["醤油",1.7],["料理酒",0.8],["砂糖",2.5],["テンメンジャン",2],["豆板醤",1],["水",8],["なたね油",5],["片栗粉",10]],"5053":[["鶏もも",45],["醤油",1.8],["料理酒",1.5],["塩",0.6],["茄子",1],["人参",24],["いんげん",1.2],["だし汁",44],["料理酒",8],["酢",8],["醤油",10.4],["砂糖",2.8],["唐辛子",0.03],["片栗粉",1.6],["なたね油",15]],"5055":[["ながいも",75],["人参",15],["鶏もも",30],["生姜",3.5],["醤油",3.3],["料理酒",3.3],["片栗粉",15],["みりん風調味料",8.3],["醤油",10],["だし汁",50],["砂糖",1.6],["万能ねぎ",3.3],["なたね油",26.6]],"44":[["玉ねぎ",20],["人参",3.3],["春菊",1.6],["冷凍コーン",2.4],["小麦粉",8],["卵",0.04],["水",7.2],["南瓜",15],["オクラ",1],["茄子",0.25],["大葉",1],["小麦粉",18],["卵",0.1],["水",16],["醤油",12.8],["料理酒",8],["みりん風調味料",8],["砂糖",8.8],["なたね油",11],["米",77]],"214":[["茄子",1],["豚ひき肉",30],["玉ねぎ",20],["料理酒",1],["塩",0.5],["こしょう",0.1],["バッター液",2],["パン粉",10],["なたね油",10]],"426":[["もめん豆腐",113],["だし汁",32],["砂糖",1.2],["塩",0.4],["醤油",0.6],["さつまいも",19],["しめじ",12.5],["こんにゃく",12.5],["人参",6.5],["砂糖",4],["塩",0.6],["醤油",1.2],["いりごま白",5]],"5054":[["茄子",1.3],["豚ひき肉",25],["玉ねぎ",20],["料理酒",1.5],["塩",0.6],["こしょう",0.05],["小麦粉",7],["卵",0.05],["水",4],["だし汁",40],["砂糖",4],["八方だし",3],["醤油",7],["酢",4],["片栗粉",3],["なたね油",1.5],["万能ねぎ",3]],"334":[["じゃがいも",97],["玉ねぎ",21],["人参",8.5],["豚ひき肉",9],["しらたき",11],["醤油",5],["料理酒",3.5],["みりん風調味料",3.5],["砂糖",1.75],["パン粉",2],["バッター液",2],["なたね油",10]],"82":[["米",78],["焼きのり",0.25],["かつお節",0.5],["いりごま白",0.5],["生鮭",45],["竹輪",17.5],["醤油",1.5],["塩",0.7],["みりん風調味料",1.5],["卵",0.5],["だしみつ",5],["小麦粉",4],["なたね油",5]],"81":[["米",78],["鶏ひき肉",55],["醤油",12],["砂糖",6],["料理酒",10.5],["生姜",2.3],["長ねぎ",3],["卵",1.5],["塩",1],["砂糖",3],["だし汁",30]],"50":[["うどん",54.5],["塩蔵わかめ",2.3],["ながいも",18.1],["なめこ",0.2],["オクラ",1.2],["鶏むね",20],["大葉",0.5],["梅びしお",5],["卵",0.3],["みりん風調味料",3],["八方だし",26.7],["水",80]],"94":[["鶏むね",90],["小麦粉",1.5],["ヨーグルト",10],["カレー粉",3],["にんにく",0.5],["生姜",0.5],["玉ねぎ",80],["バター",5],["トマト",0.1],["トマトケチャップ",3],["塩",1.4],["砂糖",3],["クミン",0.3],["ガラムマサラ",0.3],["トマトピューレ",10],["米",80],["ターメリック",0.18],["塩",0.5],["バター",4.5]],"435":[["もめん豆腐",90],["ひじき",1.5],["しらたき",15],["人参",13],["しめじ",10],["三ッ葉",5],["醤油",0.8],["みりん風調味料",0.8],["砂糖",0.05],["塩",0.05],["だし汁",8.5],["いりごま白",4],["砂糖",6],["みりん風調味料",3.4],["塩",0.75],["味噌",3.6]],"5107":[["豚カタスライス",8],["もやし",0.4],["たけのこ",6],["緑豆はるさめ",11.6],["しいたけ",1.2],["はるまきの皮",2],["生姜",1.2],["ごま油",2],["醤油",3.33],["塩",1],["片栗粉",1.5],["小麦粉",1.5],["水",2]],"6032":[["ごぼう",8.7],["人参",8],["ひじき",3.3],["胡瓜",0.1],["小松菜",56.7],["冷凍コーン",8.3],["しらたき",20],["八方だし",6.7],["醤油",1],["みりん風調味料",2.7],["水",6.7]],"6036":[["じゃがいも",140],["玉ねぎ",13],["人参",13],["胡瓜",0.1],["レタス",13],["フレンチドレッシング",3],["塩",0.7],["こしょう",0.1],["砂糖",0.9],["マヨネーズ",40]],"383":[["じゃがいも",96],["玉ねぎ",21.7],["豚ひき肉",3.3],["砂糖",0.34],["塩",1],["こしょう",0.17],["バッター液",2],["パン粉",10],["なたね油",7]],"430":[["ひじき",10],["こんにゃく",37.5],["人参",18],["蓮根",10],["厚揚げ",29.4],["冷凍えだ豆",3.5],["だし汁",37.5],["醤油",8.4],["みりん風調味料",3.33],["砂糖",3.33],["なたね油",3.33]],"6040":[["じゃがいも",140],["人参",12],["玉ねぎ",17],["胡瓜",0.15],["ドレッシング",3],["マヨネーズ",29.8],["塩",0.42],["こしょう",0.13],["砂糖",0.85]],"431":[["ひじき",8.5],["人参",14],["大豆",5.2],["こんにゃく",20],["油揚げ",3],["ごま油",1.7],["醤油",9],["砂糖",3.8],["みりん風調味料",6.5],["だし汁",35]],"215":[["鶏むね",115],["玉ねぎ",14],["塩",0.9],["にんにく",0.5],["パン粉",10],["バッター液",1],["七味唐辛子",1]],"438":[["ひじき",7.5],["マグロ缶",12],["人参",20],["こんにゃく",30],["だし汁",45],["砂糖",4.5],["醤油",7.5],["みりん風調味料",7.5],["塩",0.35],["冷凍えだ豆",4.5]],"221":[["豚ひき肉",37.2],["キャベツ",37.2],["玉ねぎ",37.2],["パン粉",11.2],["卵",0.1],["牛乳",7.2],["塩",1.4],["こしょう",0.2],["ナツメグ",0.2],["バッター液",2],["パン粉",6],["なたね油",13]],"6038":[["マカロニ",32],["人参",14.2],["玉ねぎ",10],["冷凍コーン",8],["冷凍えだ豆",8],["レタス",25],["ドレッシング",8],["塩",0.55],["こしょう",0.13],["砂糖",0.85],["マヨネーズ",28.5]],"434":[["大豆",54.4],["砂糖",40.7],["醤油",8.9],["昆布",0.5]],"6034":[["大豆",15],["金時豆",15],["人参",11.1],["冷凍コーン",7.2],["胡瓜",0.2],["玉ねぎ",3.3],["塩",0.8],["砂糖",1.5],["なたね油",4],["酢",4],["マヨネーズ",14],["じゃがいも",40]],"433":[["油揚げ",30],["もめん豆腐",60],["ごぼう",16],["人参",37.5],["卵",0.2],["砂糖",1.5],["醤油",2.25],["塩",0.75],["だし汁",35],["だし汁",80],["砂糖",2.5],["醤油",7],["みりん風調味料",2.25],["ごま油",1.5],["酢",1.5]],"6042":[["じゃがいも",80],["マカロニ",18],["人参",12],["玉ねぎ",10],["胡瓜",0.15],["マヨネーズ",30],["ドレッシング",6],["砂糖",0.4],["塩",0.5]],"429":[["ひじき",7.5],["人参",21],["ごぼう",32],["鶏むね",14],["大豆",11],["料理酒",3],["砂糖",7],["みりん風調味料",4.5],["醤油",13],["だし汁",50],["ごま油",1.5]],"427":[["もめん豆腐",150],["人参",12.5],["砂糖",2],["醤油",3],["だし汁",80],["キャベツ",10],["菜の花",1],["ねりごま",2.5],["砂糖",1.7],["塩",0.4],["みりん風調味料",3.8],["醤油",0.8],["料理酒",0.8],["八方だし",1.7]],"6033":[["鶏むね",30],["料理酒",1],["塩",0.5],["胡瓜",0.3],["人参",14.5],["もやし",0.5],["◆ドレッシング",5.5],["いりごま白",4],["なたね油",4],["万能ねぎ",1],["醤油",18.5],["砂糖",7.5],["酢",8.5],["長ねぎ",6.5],["生姜",2],["ラー油",0.2],["ごま油",1]],"6035":[["ひじき",7.2],["大根",54.5],["人参",13.5],["長ねぎ",6],["醤油",8],["砂糖",2],["塩",0.5],["酢",8],["ごま油",3.2],["なたね油",3.2],["いりごま白",1.8],["いんげん",0.3],["卵",0.2]],"49":[["うどん",60],["八方だし",25],["醤油",3],["みりん風調味料",3],["砂糖",1.5],["水",75],["玉ねぎ",9],["春菊",3],["人参",4],["小麦粉",17],["卵",0.05],["水",14],["南瓜",20],["小麦粉",5],["卵",0.05],["水",3],["卵",0.2],["砂糖",0.3],["塩",0.1],["万能ねぎ",3],["なたね油",8]],"432":[["茄子",1],["なたね油",10],["長ねぎ",2.5],["生姜",2.5],["なたね油",1.5],["スイートチリ",11],["にんにく",1.5],["唐辛子",0.1],["酢",15],["砂糖",12],["水",10],["塩",0.3],["砂糖",2.5],["醤油",7.5],["牡蠣味調味料",3.5],["大葉",0.5]],"222":[["鶏ひき肉",66],["しいたけ",1.2],["えのき",17],["玉ねぎ",46],["牛乳",7],["パン粉",6],["卵",0.2],["塩",1.2],["こしょう",0.2],["バッター液",2],["なたね油",13],["パン粉",6]],"73":[["焼きそば",0.6],["天然えび",9],["もやし",0.4],["人参",10],["ニラ",10],["卵",0.3],["にんにく",0.9],["牡蠣味調味料",3.2],["トマトケチャップ",7],["ナンプラー",7],["塩",0.5],["砂糖",1.8],["えびのだし汁",30],["酢",4.5],["なたね油",0.3]],"47":[["中華めん",0.75],["胡瓜",0.25],["レタス",30],["鶏むね",50],["料理酒",2.5],["塩",0.833],["砂糖",0.833],["トマト",0.083],["醤油",22.5],["砂糖",10],["酢",10.833],["ごま油",1.25],["豆板醤",0.25]],"5083":[["鶏むね",125],["砂糖",1.25],["水",20],["塩",0.85],["にんにく",0.7],["カレー粉",0.27],["シナモン",0.27],["ナツメグ",0.2],["七味唐辛子",0.27],["醤油",6.25],["料理酒",8.3],["片栗粉",5.5],["なたね油",6.2]],"79":[["米",78],["豚モモスライス",50],["長ねぎ",10],["ピーマン",0.34],["砂糖",6],["みりん風調味料",16],["醤油",12],["いりごま白",0.8],["紅しょうが",5],["焼きのり",0.25]],"5082":[["鶏むね",150],["塩",1.8],["砂糖",1.8],["マヨネーズ",13.5],["だしみつ",9],["からし",2.25],["卵",0.3],["小麦粉",12],["片栗粉",12],["なたね油",7.5]],"828":[["たら",30],["塩",3],["ブラックペッパー",0.05],["パン粉",5],["バッター液",1],["なたね油",5],["砂糖",2.5],["醤油",3.8],["みりん風調味料",5],["バンズ",1],["レタス",20],["マヨネーズ",10],["いぶりがっこ",7],["卵",0.7]],"10004":[["ヒレ肉",80],["塩",0.8],["こしょう",0.2],["バッター液",2],["パン粉",16],["なたね油",1.6]],"10046":[["豚カタスライス",30],["玉ねぎ",15],["しめじ",8],["なたね油",0.8],["トマトケチャップ",7.5],["中濃ソース",1.5],["料理酒",1.5],["洋風だし",0.5],["砂糖",0.5],["醤油",0.25],["にんにく",0.2],["塩",0.1],["こしょう",0.1]]};
+const stores = ['大丸','センター南','日限山','ほんもく'];
+const circled = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫'];
+
+const grid = document.getElementById('grid');
+const dl = document.getElementById('itemList');
+document.getElementById('itemMasterCount').textContent = ITEMS.length;
+
+ITEMS.forEach(it=>{
+  const opt = document.createElement('option');
+  opt.value = it[0];
+  opt.label = it[1];
+  dl.appendChild(opt);
+});
+
+function excelSerialToISODate(serial){
+  const utcDays = Math.floor(serial - 25569);
+  const date = new Date(utcDays * 86400 * 1000);
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth()+1).padStart(2,'0');
+  const d = String(date.getUTCDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+function fmt(n){
+  if (n === '' || n === null || isNaN(n)) return '0';
+  const num = Number(n);
+  if (Object.is(num, -0)) return '0';
+  return num.toLocaleString('ja-JP', {maximumFractionDigits:1});
+}
+function roundup(n){ return Math.ceil(n - 1e-9); }
+
+// ---- 設定値の一時保存（タブを閉じるまで保持。誤ってページが再読み込みされても消えない） ----
+const SS_KEYS = ['theDate','cntNormal','cntKid','cntSenior','cntMini','miniHinban','itemCount'];
+function saveSettingsToSession(){
+  try{
+    SS_KEYS.forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) sessionStorage.setItem('ticket_'+id, el.value);
+    });
+  }catch(e){ /* プライベートブラウズ等でsessionStorageが使えない場合は無視 */ }
+}
+function restoreSettingsFromSession(){
+  try{
+    SS_KEYS.forEach(id=>{
+      const el = document.getElementById(id);
+      const saved = sessionStorage.getItem('ticket_'+id);
+      if(el && saved !== null && saved !== '') el.value = saved;
+    });
+  }catch(e){ /* 無視 */ }
+}
+
+let itemCount = 8;
+
+function buildTickets(){
+  grid.innerHTML = '';
+  itemCount = parseInt(document.getElementById('itemCount').value) || 8;
+  for(let i=0;i<itemCount;i++){
+    const t = document.createElement('div');
+    t.className = 'ticket';
+    t.dataset.idx = i;
+    t.innerHTML = `
+      <div class="top">
+        <div class="idx-row">
+          <span class="idx">${circled[i]||('#'+(i+1))} 品目</span>
+          <span class="badge-mini">ミニ弁当専用</span>
+        </div>
+        <div class="hinban-row">
+          <input type="number" class="hinban" list="itemList" placeholder="品番">
+        </div>
+        <div class="hinmei empty">品番を入力してください</div>
+        <div class="amounts">
+          <div class="a"><div class="lbl">通常/1食</div><div class="val v-normal">-</div><div class="cnt v-normal-cnt">-</div></div>
+          <div class="a"><div class="lbl">子供/1食</div><div class="val v-kid">-</div><div class="cnt v-kid-cnt">-</div></div>
+          <div class="a"><div class="lbl">シニア/1食</div><div class="val v-senior">-</div><div class="cnt v-senior-cnt">-</div></div>
+        </div>
+        <div class="subrow"><span>合計必要量</span><span class="v v-total-g">0 g</span></div>
+        <div class="subrow"><span>1パックの量</span><span class="v v-onep">- g</span></div>
+        <div class="subrow"><span>必要パック数（計算）</span><span class="v v-calc-pack">0</span></div>
+      </div>
+      <div class="materials">
+        <div class="materials-title"><span>材料（必要量合計）</span><span class="mat-pack-note"></span></div>
+        <div class="materials-list"></div>
+      </div>
+      <div class="stores">
+        <div class="stores-title">店舗別パック数（手入力）</div>
+        <div class="store-grid">
+          ${stores.map((s,si)=>`
+            <div class="store-item">
+              <span>${s}</span>
+              <input type="number" min="0" class="store-in" data-store="${si}" value="">
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="tear"></div>
+      <div class="total-box zero">
+        <div class="lbl">パック数合計</div>
+        <div class="val"><span class="v-grand">0</span><small>パック</small></div>
+      </div>
+      <div class="prep-check">
+        <label>
+          <input type="checkbox" class="prep-checkbox">
+          <span>仕込み完了</span>
+        </label>
+      </div>
+    `;
+    grid.appendChild(t);
+  }
+  attachListeners();
+  recalcAll();
+}
+
+function attachListeners(){
+  document.querySelectorAll('.ticket').forEach(t=>{
+    t.querySelector('.hinban').addEventListener('input', ()=>recalcTicket(t));
+    t.querySelectorAll('.store-in').forEach(inp=> inp.addEventListener('input', ()=>recalcTicket(t)));
+    t.querySelector('.prep-checkbox').addEventListener('change', (ev)=>{
+      t.classList.toggle('is-done', ev.target.checked);
+    });
+  });
+  ['cntNormal','cntKid','cntSenior','cntMini','miniHinban'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', ()=>{ recalcAll(); saveSettingsToSession(); });
+  });
+}
+
+function recalcTicket(t){
+  const hinbanVal = t.querySelector('.hinban').value;
+  const hinban = hinbanVal ? parseInt(hinbanVal) : null;
+  const item = hinban !== null ? itemMap[hinban] : null;
+  const hinmeiEl = t.querySelector('.hinmei');
+
+  const miniHinban = parseInt(document.getElementById('miniHinban').value) || null;
+  const isMini = item && miniHinban !== null && item[0] === miniHinban;
+  t.classList.toggle('is-mini', !!isMini);
+
+  if(!item){
+    const notFound = !!hinbanVal;
+    hinmeiEl.textContent = notFound ? '⚠ 品番マスタに見つかりません（未登録の品番です）' : '品番を入力してください';
+    hinmeiEl.classList.toggle('empty', !notFound);
+    hinmeiEl.classList.toggle('not-found', notFound);
+    t.classList.toggle('has-error', notFound);
+    t.querySelector('.v-normal').textContent = '-';
+    t.querySelector('.v-kid').textContent = '-';
+    t.querySelector('.v-senior').textContent = '-';
+    t.querySelector('.v-normal-cnt').textContent = '-';
+    t.querySelector('.v-kid-cnt').textContent = '-';
+    t.querySelector('.v-senior-cnt').textContent = '-';
+    t.querySelector('.v-total-g').textContent = '0 g';
+    t.querySelector('.v-onep').textContent = '- g';
+    t.querySelector('.v-calc-pack').textContent = '0';
+    renderMaterials(t, null, 0);
+    updateGrandTotal(t, 0);
+    return;
+  }
+  hinmeiEl.textContent = item[1];
+  hinmeiEl.classList.remove('empty');
+  hinmeiEl.classList.remove('not-found');
+  t.classList.remove('has-error');
+
+  const onep = Number(item[2]) || 0;
+  const normalP = Number(item[3]) || 0;
+  const kidP = Number(item[4]) || 0;
+
+  const cntNormal = Number(document.getElementById('cntNormal').value) || 0;
+  const cntKidTotal = Number(document.getElementById('cntKid').value) || 0;
+  const cntSenior = Number(document.getElementById('cntSenior').value) || 0;
+  const cntMini = Number(document.getElementById('cntMini').value) || 0;
+
+  const kidCount = isMini ? cntMini : cntKidTotal;
+
+  t.querySelector('.v-normal').textContent = fmt(normalP)+'g';
+  t.querySelector('.v-kid').textContent = fmt(kidP)+'g';
+  t.querySelector('.v-senior').textContent = fmt(normalP)+'g';
+
+  const cntNormalEl = t.querySelector('.v-normal-cnt');
+  const cntKidEl = t.querySelector('.v-kid-cnt');
+  const cntSeniorEl = t.querySelector('.v-senior-cnt');
+  cntNormalEl.textContent = '×'+fmt(cntNormal)+'人';
+  cntNormalEl.classList.toggle('zero', cntNormal===0);
+  cntKidEl.textContent = '×'+fmt(kidCount)+'人' + (isMini ? '（ミニ）':'');
+  cntKidEl.classList.toggle('zero', kidCount===0);
+  cntSeniorEl.textContent = '×'+fmt(cntSenior)+'人';
+  cntSeniorEl.classList.toggle('zero', cntSenior===0);
+
+  const totalG = normalP*cntNormal + kidP*kidCount + normalP*cntSenior;
+  t.querySelector('.v-total-g').textContent = fmt(totalG)+' g';
+  t.querySelector('.v-onep').textContent = onep ? fmt(onep)+' g' : '-';
+
+  const calcPack = onep>0 ? roundup(totalG/onep) : 0;
+  t.querySelector('.v-calc-pack').textContent = fmt(calcPack);
+
+  let storeSum = 0;
+  t.querySelectorAll('.store-in').forEach(inp=>{ storeSum += Number(inp.value)||0; });
+
+  const grand = calcPack + storeSum;
+  renderMaterials(t, item[0], grand);
+  updateGrandTotal(t, grand);
+}
+
+function renderMaterials(t, hinban, packCount){
+  const listEl = t.querySelector('.materials-list');
+  const noteEl = t.querySelector('.mat-pack-note');
+  const rows = hinban !== null ? INGREDIENTS[hinban] : null;
+  if(!rows){
+    listEl.innerHTML = '<div class="materials-empty">（レシピ未登録・仕込計算表で確認してください）</div>';
+    noteEl.textContent = '';
+    return;
+  }
+  noteEl.textContent = packCount + 'パック分';
+  listEl.innerHTML = rows.map(([name, perPack])=>{
+    const total = (Number(perPack)||0) * packCount;
+    return `<div class="mname">${name}</div><div class="mamt">${fmt(Math.round(total))} g</div>`;
+  }).join('');
+}
+
+function updateGrandTotal(t, val){
+  t.querySelector('.v-grand').textContent = fmt(val);
+  t.querySelector('.total-box').classList.toggle('zero', val===0);
+  recalcGrandFooter();
+}
+
+function recalcGrandFooter(){
+  let sum = 0;
+  document.querySelectorAll('.v-grand').forEach(el=> sum += Number(el.textContent.replace(/,/g,''))||0);
+  document.getElementById('grandTotal').textContent = fmt(sum);
+}
+
+function recalcAll(){
+  document.querySelectorAll('.ticket').forEach(recalcTicket);
+}
+
+document.getElementById('itemCount').addEventListener('change', ()=>{ buildTickets(); saveSettingsToSession(); });
+document.getElementById('theDate').addEventListener('input', saveSettingsToSession);
+document.getElementById('printBtn').addEventListener('click', ()=>window.print());
+
+// ---- Excelファイル読み込み（PC/iPad内の仕込計算Excelを直接参照） ----
+document.getElementById('loadBtn').addEventListener('click', ()=> document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', handleExcelLoad);
+document.getElementById('loadCsvBtn').addEventListener('click', loadFromCsv);
+
+// ---- ラベル文字列を探して隣接セルの値を読む（行の挿入・削除に強くするため） ----
+function findLabelRightValue(rows, labelText, exact){
+  if(!rows) return null;
+  for(let r=0;r<rows.length;r++){
+    const row = rows[r];
+    if(!row) continue;
+    for(let c=0;c<row.length;c++){
+      const cell = row[c];
+      const hit = exact ? (cell === labelText) : (typeof cell === 'string' && cell.indexOf(labelText) !== -1);
+      if(hit){
+        return row[c+1] !== undefined ? row[c+1] : null;
+      }
+    }
+  }
+  return null;
+}
+function findLabelCellPos(rows, labelSubstr){
+  if(!rows) return null;
+  for(let r=0;r<rows.length;r++){
+    const row = rows[r];
+    if(!row) continue;
+    for(let c=0;c<row.length;c++){
+      if(typeof row[c] === 'string' && row[c].indexOf(labelSubstr) !== -1){
+        return {row:r, col:c};
+      }
+    }
+  }
+  return null;
+}
+
+// ---- 読み込み結果バナー（読み込み完了サマリー・警告表示） ----
+function showLoadBanner(kind, titleText, lines){
+  const el = document.getElementById('loadBanner');
+  el.className = 'load-banner show ' + kind;
+  let html = `<div class="lb-title">${titleText}</div>`;
+  if(lines && lines.length){
+    html += `<ul>${lines.map(l=>`<li class="lb-line">${l}</li>`).join('')}</ul>`;
+  }
+  el.innerHTML = html;
+}
+
+// ---- 日付セルの値をISO(yyyy-mm-dd)に変換。数値(Excelシリアル値)でも文字列(CSVの表示文字列)でも対応 ----
+function resolveDateToISO(v){
+  if(typeof v === 'number' && !isNaN(v)) return excelSerialToISODate(v);
+  if(typeof v === 'string'){
+    const m = v.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+    if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  }
+  return null;
+}
+
+// ---- CSVテキストを行×列の配列に変換（xzParseSheetRowsと同じ構造で返す。引用符・カンマ・改行を含むセルに対応） ----
+function csvParseToRows(text){
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  let i = 0;
+  const len = text.length;
+  function pushField(){
+    const v = field; field = '';
+    if(v === ''){ row.push(null); return; }
+    const trimmed = v.trim();
+    if(trimmed !== '' && !isNaN(Number(trimmed))){
+      row.push(Number(trimmed));
+    } else {
+      row.push(v);
+    }
+  }
+  function pushRow(){
+    pushField();
+    rows.push(row);
+    row = [];
+  }
+  while(i < len){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i += 2; continue; }
+        inQuotes = false; i++; continue;
+      } else { field += c; i++; continue; }
+    } else {
+      if(c === '"'){ inQuotes = true; i++; continue; }
+      if(c === ','){ pushField(); i++; continue; }
+      if(c === '\r'){ i++; continue; }
+      if(c === '\n'){ pushRow(); i++; continue; }
+      field += c; i++; continue;
+    }
+  }
+  if(field !== '' || row.length > 0){ pushRow(); }
+  return rows;
+}
+
+// ---- スプレッドシート「ウェブに公開」で発行したCSVのURL（4シート分） ----
+const PUBLISHED_CSV_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQkjyYoNPR_wGby6LfLP-VzkeDyUZ_aZRTOSzoEn5kehAdK70I82GAV25gw375log/pub';
+const PUBLISHED_CSV_GIDS = {
+  'おかずアイテム': 1122945047,
+  'レシピ材料マスタ': 1316209688,
+  'AI\u3000のシート': 1996614753,
+  '試作日々仕込み計算書': 824807668
+};
+
+function csvUrl(gid){
+  return `${PUBLISHED_CSV_BASE}?gid=${gid}&single=true&output=csv&cachebust=${Date.now()}`;
+}
+
+// ---- スプレッドシートから読み込む（インターネット接続が必要） ----
+function loadFromCsv(){
+  const statusEl = document.getElementById('dataStatus');
+  statusEl.textContent = '読み込み中…（スプレッドシートに接続しています）';
+  const names = Object.keys(PUBLISHED_CSV_GIDS);
+  Promise.all(names.map(name =>
+    fetch(csvUrl(PUBLISHED_CSV_GIDS[name])).then(res=>{
+      if(!res.ok) throw new Error(`${name}シートの取得に失敗しました（HTTP ${res.status}）`);
+      return res.text();
+    }).then(text => csvParseToRows(text))
+  )).then(results=>{
+    const sheets = {};
+    names.forEach((name, i)=>{ sheets[name] = results[i]; });
+    const itemRows = sheets['おかずアイテム'];
+    const matRows = sheets['レシピ材料マスタ'];
+    const aiRows = sheets['AI\u3000のシート'];
+    const dailyRows = sheets['試作日々仕込み計算書'];
+    processLoadedSheets(itemRows, matRows, aiRows, dailyRows, 'スプレッドシート', statusEl);
+  }).catch(err=>{
+    statusEl.textContent = '読み込みエラー：内蔵データのまま使用中';
+    showLoadBanner('warn', '⚠ スプレッドシートへの接続に失敗しました', [
+      'インターネットに接続されているか確認してください。',
+      `エラー内容：${err.message}`,
+      '改善しない場合は「ローカルのExcelファイルを読み込む」をお試しください。'
+    ]);
+  });
+}
+
+// ---- ローカルのExcelファイルから読み込む（従来方式・オフラインでも動作） ----
+function handleExcelLoad(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('dataStatus');
+  statusEl.textContent = '読み込み中…';
+  loadXlsxSheets(file, ['おかずアイテム', 'レシピ材料マスタ', 'AI\u3000のシート', '試作日々仕込み計算書']).then(sheets=>{
+    const itemRows = sheets['おかずアイテム'];
+    const matRows = sheets['レシピ材料マスタ'];
+    const aiRows = sheets['AI\u3000のシート'];
+    const dailyRows = sheets['試作日々仕込み計算書'];
+    processLoadedSheets(itemRows, matRows, aiRows, dailyRows, file.name, statusEl);
+  }).catch(err=>{
+    statusEl.textContent = '読み込みエラー：内蔵データのまま使用中';
+    showLoadBanner('warn', '⚠ 読み込みエラー', ['「仕込計算」のExcelファイル（.xlsx）を選択してください。内蔵データのまま使用しています。']);
+    alert('読み込みに失敗しました。\n' + err.message + '\n\n「仕込計算」のExcelファイル（.xlsx）を選択してください。');
+  }).finally(()=>{
+    e.target.value = '';
+  });
+}
+
+// ---- 読み込んだ4シート分のデータを反映する共通処理（スプレッドシート経由・ローカルExcelファイル経由の両方から呼ばれる） ----
+function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, sourceLabel, statusEl){
+    if(!itemRows || !matRows){
+      statusEl.textContent = '読み込みエラー：内蔵データのまま使用中';
+      showLoadBanner('warn', '⚠ 読み込みエラー', ['「おかずアイテム」または「レシピ材料マスタ」シートが見つかりませんでした。']);
+      return;
+    }
+
+    const newItems = [];
+    for(let i=1;i<itemRows.length;i++){
+      const r = itemRows[i];
+      if(!r || (r[0]==null && r[1]==null)) continue;
+      newItems.push([r[0], r[1], r[2]||0, r[3]||0, r[4]||0]);
+    }
+    const newIngredients = {};
+    for(let i=1;i<matRows.length;i++){
+      const r = matRows[i];
+      if(!r || r[0]==null || r[2]==null) continue;
+      const code = r[0];
+      if(!newIngredients[code]) newIngredients[code] = [];
+      newIngredients[code].push([r[2], r[3]||0]);
+    }
+    if(newItems.length===0){
+      throw new Error('おかずアイテムのデータが読み取れませんでした');
+    }
+
+    ITEMS.length = 0; ITEMS.push(...newItems);
+    Object.keys(INGREDIENTS).forEach(k=>delete INGREDIENTS[k]);
+    Object.assign(INGREDIENTS, newIngredients);
+    Object.keys(itemMap).forEach(k=>delete itemMap[k]);
+    ITEMS.forEach(it=>{ itemMap[it[0]] = it; });
+
+    dl.innerHTML = '';
+    ITEMS.forEach(it=>{
+      const opt = document.createElement('option');
+      opt.value = it[0]; opt.label = it[1];
+      dl.appendChild(opt);
+    });
+    document.getElementById('itemMasterCount').textContent = ITEMS.length;
+
+    // 「AI　のシート」の日付・「通常弁当　食数」等のラベルを探し、右隣のセルを読む（行がずれても対応可能）
+    let countsApplied = false;
+    if(aiRows){
+      const dateSerial = findLabelRightValue(aiRows, '日付', true);
+      const normalCnt = findLabelRightValue(aiRows, '通常弁当\u3000食数', true);
+      const kidCnt = findLabelRightValue(aiRows, '子供弁当\u3000食数', true);
+      const seniorCnt = findLabelRightValue(aiRows, 'シニア弁当\u3000食数', true);
+      const resolvedDate = resolveDateToISO(dateSerial);
+      if(resolvedDate){
+        document.getElementById('theDate').value = resolvedDate;
+        countsApplied = true;
+      }
+      if(normalCnt !== null && normalCnt !== undefined && normalCnt !== ''){
+        document.getElementById('cntNormal').value = normalCnt;
+        countsApplied = true;
+      }
+      if(kidCnt !== null && kidCnt !== undefined && kidCnt !== ''){
+        document.getElementById('cntKid').value = kidCnt;
+        countsApplied = true;
+      }
+      if(seniorCnt !== null && seniorCnt !== undefined && seniorCnt !== ''){
+        document.getElementById('cntSenior').value = seniorCnt;
+        countsApplied = true;
+      }
+    }
+    // 学童ミニ弁当の人数は「試作日々仕込み計算書」の「ミニ」ラベルの右隣（＝田園ミニ等の合計セル）から取得
+    if(dailyRows){
+      const miniCnt = findLabelRightValue(dailyRows, 'ミニ', true);
+      if(miniCnt !== null && miniCnt !== undefined && miniCnt !== ''){
+        document.getElementById('cntMini').value = miniCnt;
+        countsApplied = true;
+      }
+      // ミニ専用アイテム品番は「ミニ」ラベル（完全一致セル）の1行下・2列右（＝G15相当、手入力の品番欄）から取得
+      // ※「田園ミニ」など部分一致は避けるため、ここは完全一致で位置を探す
+      let miniLabelPos = null;
+      for(let r=0; r<dailyRows.length && !miniLabelPos; r++){
+        const row = dailyRows[r];
+        if(!row) continue;
+        for(let c=0; c<row.length; c++){
+          if(row[c] === 'ミニ'){ miniLabelPos = {row:r, col:c}; break; }
+        }
+      }
+      if(miniLabelPos){
+        const hinbanRow = dailyRows[miniLabelPos.row + 1];
+        const miniHinbanVal = hinbanRow ? hinbanRow[miniLabelPos.col + 2] : null;
+        if(typeof miniHinbanVal === 'number' && !isNaN(miniHinbanVal) && miniHinbanVal > 0){
+          document.getElementById('miniHinban').value = miniHinbanVal;
+          countsApplied = true;
+        }
+      }
+    }
+    if(countsApplied) saveSettingsToSession();
+
+    // ① 呼び出したデータの日付（AI のシートB4）と、らくらく側の対象日設定（試作日々仕込み計算書 C1=月・E1=日）が一致しているかのチェック
+    // ※「今日の日付」との比較ではない（先の日の準備をすることは普通にあるため）。C1/E1とB4がズレている＝品番等の呼び出し元がズレている可能性がある、という整合性チェック
+    const loadedDateVal = document.getElementById('theDate').value;
+    let dateMismatch = false;
+    let configDateLabel = '';
+    if(dailyRows && dailyRows[0] && loadedDateVal){
+      const configMonth = dailyRows[0][2]; // C1
+      const configDay = dailyRows[0][4];   // E1
+      if(typeof configMonth === 'number' && typeof configDay === 'number'){
+        const parts = loadedDateVal.split('-');
+        const loadedMonth = parseInt(parts[1], 10);
+        const loadedDay = parseInt(parts[2], 10);
+        configDateLabel = `${configMonth}月${configDay}日`;
+        if(configMonth !== loadedMonth || configDay !== loadedDay){
+          dateMismatch = true;
+        }
+      }
+    }
+
+    // ④ 学童ミニの「人数はあるのに専用品番が未設定」の食い違いチェック
+    // （品番はあるが人数0、は「その日はミニ注文なし」という正常な状態なので警告しない）
+    const miniCntNow = Number(document.getElementById('cntMini').value) || 0;
+    const miniHinbanNow = Number(document.getElementById('miniHinban').value) || 0;
+    const miniMismatch = miniCntNow > 0 && miniHinbanNow <= 0;
+
+    // 「AI　のシート」の「重複なしリスト作成用」ラベル（I列相当）を探し、その2列右（K列相当＝重複なし品番）を読み取る（最大12件、空白または0が3回続いたら終了）
+    let todayCodes = [];
+    if(aiRows){
+      const pos = findLabelCellPos(aiRows, '重複なしリスト作成用');
+      if(pos){
+        const dataCol = pos.col + 2; // ラベル列(I)→連番列(J)→重複なし品番列(K)
+        let blankStreak = 0;
+        for(let r=pos.row+1; r<aiRows.length && todayCodes.length<12; r++){
+          const row = aiRows[r];
+          const v = row ? row[dataCol] : null;
+          if(v !== null && v !== undefined && v !== '' && v !== 0){
+            todayCodes.push(v);
+            blankStreak = 0;
+          } else {
+            blankStreak++;
+            if(blankStreak >= 3) break;
+          }
+        }
+      } else {
+        // ラベルが見つからない場合は旧来の固定位置（K10:K19）にフォールバック
+        for(let r=9; r<=18; r++){
+          const row = aiRows[r];
+          const v = row ? row[10] : null;
+          if(v !== null && v !== undefined && v !== '' && v !== 0) todayCodes.push(v);
+        }
+      }
+    }
+
+    const now = new Date();
+    const ts = now.toLocaleString('ja-JP', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+    // ③ 本日の品番のうち、品番マスタ（おかずアイテム）に見つからないものを検出
+    const missingCodes = todayCodes.filter(code => !itemMap[code]);
+
+    if(todayCodes.length > 0){
+      document.getElementById('itemCount').value = Math.min(Math.max(todayCodes.length, 1), 12);
+      buildTickets();
+      const tickets = document.querySelectorAll('.ticket');
+      todayCodes.forEach((code, i)=>{
+        if(tickets[i]) tickets[i].querySelector('.hinban').value = code;
+      });
+      recalcAll();
+      statusEl.textContent = `データ：${sourceLabel}（${ts} 読込・本日の${todayCodes.length}品目${countsApplied ? '・食数' : ''}を自動反映）`;
+    } else {
+      recalcAll();
+      statusEl.textContent = `データ：${sourceLabel}（${ts} 読込${countsApplied ? '・食数を自動反映' : ''}・弁当カレンダー未入力のため品番は手入力してください）`;
+    }
+
+    // ② 読み込み完了サマリーを表示（① ③ ④ の警告があればあわせて表示）
+    const warnLines = [];
+    if(dateMismatch) warnLines.push(`⚠ 読み込んだデータの日付（<b>${loadedDateVal}</b>）と、らくらく側の対象日設定（試作日々仕込み計算書 <b>${configDateLabel}</b>）が一致していません。品番等の呼び出し元がズレている可能性があります。Excelを開いて再計算・保存してください。`);
+    if(miniMismatch) warnLines.push(`⚠ 学童ミニ弁当の人数が${fmt(miniCntNow)}人ありますが、専用品番が設定されていません。Excelの「試作日々仕込み計算書」G15を確認してください。`);
+    if(missingCodes.length) warnLines.push(`⚠ 品番マスタに見つからない品番があります：${missingCodes.join('、')}（「おかずアイテム」シートを確認してください）`);
+
+    const summaryLine = `${loadedDateVal || '（日付不明）'}／通常${fmt(Number(document.getElementById('cntNormal').value)||0)}・子供${fmt(Number(document.getElementById('cntKid').value)||0)}・シニア${fmt(Number(document.getElementById('cntSenior').value)||0)}・ミニ${fmt(miniCntNow)}／品目${todayCodes.length}件`;
+
+    if(warnLines.length){
+      showLoadBanner('warn', '⚠ 読み込み完了（要確認の項目があります）', [summaryLine, ...warnLines]);
+    } else {
+      showLoadBanner('ok', '✓ 読み込み完了', [summaryLine]);
+    }
+}
+
+// 初期日付を今日に（保存済みの設定があればそちらを優先）
+const d = new Date();
+document.getElementById('theDate').value = d.toISOString().slice(0,10);
+restoreSettingsFromSession();
+
+buildTickets();
+</script>
+</body>
+</html>
