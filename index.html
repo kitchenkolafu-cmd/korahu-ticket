@@ -406,7 +406,7 @@
     <div class="brand">
       <span class="eyebrow">Prep Ticket / 惣菜仕込み</span>
       <h1>惣菜仕込み計算チケット</h1>
-      <span class="ver-badge">Ver. 2026-08-17（曜日別スプレッドシート版）</span>
+      <span class="ver-badge">Ver. 2026-08-20（弁当カレンダー元データ直結版）</span>
     </div>
     <div class="date-box">
       <label>日付</label>
@@ -985,6 +985,64 @@ const MASTER_GIDS = {
   'おかずアイテム': 2134970399,
   'レシピ材料マスタ': 1400752691
 };
+
+// ---- 「弁当カレンダー」（通常／子供／シニア）も曜日に関係なく、
+// 　　　共通の元データ（曜日の無いらくらく計算）から直接、対象日の品番を計算します。
+// 　　　元データのカレンダーを修正するだけで、月〜土すべてに自動で反映されます
+// 　　　（各曜日のスプレッドシート側の弁当カレンダータブは、もう編集しなくて大丈夫です）。
+const CALENDAR_GIDS = {
+  '弁当カレンダー_通常': 919540301,
+  '弁当カレンダー_子供': 1525879034,
+  '弁当カレンダー_シニア': 2132945730
+};
+// Date#getDay() の戻り値（0=日,1=月,…6=土）→ カレンダー表内の列位置。日曜日は運用対象外のため非対応。
+const CALENDAR_DAY_COLS = { 1:1, 2:3, 3:5, 4:7, 5:9, 6:11 };
+
+// 「弁当カレンダー」1枚分の表から、指定日（YYYY-MM-DD）の品番一覧を取り出す
+function getCodesFromCalendarRows(calRows, isoDate){
+  const codes = [];
+  if(!calRows || !isoDate) return codes;
+  const parts = isoDate.split('-').map(Number);
+  if(parts.length !== 3 || parts.some(isNaN)) return codes;
+  const [y, m, d] = parts;
+  const dateObj = new Date(y, m-1, d);
+  if(isNaN(dateObj.getTime())) return codes;
+  const col = CALENDAR_DAY_COLS[dateObj.getDay()];
+  if(col === undefined) return codes; // 日曜日はカレンダー対象外
+
+  for(let r=0; r<calRows.length; r++){
+    const row = calRows[r];
+    if(!row || typeof row[0] !== 'number') continue; // 週番号の行（＝日付が入っている行）だけを見る
+    if(row[col] !== d) continue; // その週のこの曜日欄が、探している日付と一致するか
+    for(let ir=r+1; ir<calRows.length && ir<=r+5; ir++){
+      const itemRow = calRows[ir];
+      if(!itemRow) continue;
+      if(typeof itemRow[0] === 'number') break; // 次の週番号の行に到達したら終了
+      const code = itemRow[col];
+      if(code !== null && code !== undefined && code !== '' && code !== 0){
+        codes.push(code);
+      }
+    }
+    break;
+  }
+  return codes;
+}
+
+// 「通常／子供／シニア」の3枚を合わせて、重複を除いた本日の品番一覧を作る（最大12件）
+function getTodayCodesFromCalendars(calendarSheets, isoDate){
+  if(!calendarSheets) return [];
+  const combined = [];
+  Object.keys(CALENDAR_GIDS).forEach(name=>{
+    getCodesFromCalendarRows(calendarSheets[name], isoDate).forEach(code=>combined.push(code));
+  });
+  const seen = new Set();
+  const result = [];
+  combined.forEach(code=>{
+    if(!seen.has(code)){ seen.add(code); result.push(code); }
+  });
+  return result.slice(0, 12);
+}
+
 // ---- 「AIのシート」「試作日々仕込み計算書」（曜日ごとの食数・品番）は、選んだ曜日のスプレッドシートから読み込みます。
 const DAILY_GIDS = {
   'AI\u3000のシート': 1836616603,
@@ -1036,11 +1094,18 @@ function loadFromCsv(dayKey){
   setActiveDayBtn(dayKey);
   statusEl.textContent = `読み込み中…（${dayConf.label}のスプレッドシートに接続しています）`;
 
-  // おかずアイテム／レシピ材料マスタ＝共通の元データから、AIのシート／試作日々仕込み計算書＝選んだ曜日のシートから取得
+  // おかずアイテム／レシピ材料マスタ／弁当カレンダー＝共通の元データから、AIのシート／試作日々仕込み計算書＝選んだ曜日のシートから取得
   const masterNames = Object.keys(MASTER_GIDS);
+  const calendarNames = Object.keys(CALENDAR_GIDS);
   const dailyNames = Object.keys(DAILY_GIDS);
   const masterFetches = masterNames.map(name =>
     fetch(csvUrl(MASTER_CSV_BASE, MASTER_GIDS[name])).then(res=>{
+      if(!res.ok) throw new Error(`${name}シート（元データ）の取得に失敗しました（HTTP ${res.status}）`);
+      return res.text();
+    }).then(text => csvParseToRows(text))
+  );
+  const calendarFetches = calendarNames.map(name =>
+    fetch(csvUrl(MASTER_CSV_BASE, CALENDAR_GIDS[name])).then(res=>{
       if(!res.ok) throw new Error(`${name}シート（元データ）の取得に失敗しました（HTTP ${res.status}）`);
       return res.text();
     }).then(text => csvParseToRows(text))
@@ -1051,14 +1116,16 @@ function loadFromCsv(dayKey){
       return res.text();
     }).then(text => csvParseToRows(text))
   );
-  Promise.all([...masterFetches, ...dailyFetches]).then(results=>{
+  Promise.all([...masterFetches, ...calendarFetches, ...dailyFetches]).then(results=>{
     const sheets = {};
-    [...masterNames, ...dailyNames].forEach((name, i)=>{ sheets[name] = results[i]; });
+    [...masterNames, ...calendarNames, ...dailyNames].forEach((name, i)=>{ sheets[name] = results[i]; });
     const itemRows = sheets['おかずアイテム'];
     const matRows = sheets['レシピ材料マスタ'];
     const aiRows = sheets['AI\u3000のシート'];
     const dailyRows = sheets['試作日々仕込み計算書'];
-    processLoadedSheets(itemRows, matRows, aiRows, dailyRows, `${dayConf.label}のスプレッドシート`, statusEl);
+    const calendarSheets = {};
+    calendarNames.forEach(name=>{ calendarSheets[name] = sheets[name]; });
+    processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheets, `${dayConf.label}のスプレッドシート`, statusEl);
   }).catch(err=>{
     statusEl.textContent = '読み込みエラー：内蔵データのまま使用中';
     showLoadBanner('warn', `⚠ ${dayConf.label}のスプレッドシートへの接続に失敗しました`, [
@@ -1080,7 +1147,7 @@ function handleExcelLoad(e){
     const matRows = sheets['レシピ材料マスタ'];
     const aiRows = sheets['AI\u3000のシート'];
     const dailyRows = sheets['試作日々仕込み計算書'];
-    processLoadedSheets(itemRows, matRows, aiRows, dailyRows, file.name, statusEl);
+    processLoadedSheets(itemRows, matRows, aiRows, dailyRows, null, file.name, statusEl);
   }).catch(err=>{
     statusEl.textContent = '読み込みエラー：内蔵データのまま使用中';
     showLoadBanner('warn', '⚠ 読み込みエラー', ['「仕込計算」のExcelファイル（.xlsx）を選択してください。内蔵データのまま使用しています。']);
@@ -1091,7 +1158,7 @@ function handleExcelLoad(e){
 }
 
 // ---- 読み込んだ4シート分のデータを反映する共通処理（スプレッドシート経由・ローカルExcelファイル経由の両方から呼ばれる） ----
-function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, sourceLabel, statusEl){
+function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheets, sourceLabel, statusEl){
     if(!itemRows || !matRows){
       statusEl.textContent = '読み込みエラー：内蔵データのまま使用中';
       showLoadBanner('warn', '⚠ 読み込みエラー', ['「おかずアイテム」または「レシピ材料マスタ」シートが見つかりませんでした。']);
@@ -1208,9 +1275,12 @@ function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, sourceLabel, 
     const miniHinbanNow = Number(document.getElementById('miniHinban').value) || 0;
     const miniMismatch = miniCntNow > 0 && miniHinbanNow <= 0;
 
-    // 「AI　のシート」の「重複なしリスト作成用」ラベル（I列相当）を探し、その2列右（K列相当＝重複なし品番）を読み取る（最大12件、空白または0が3回続いたら終了）
-    let todayCodes = [];
-    if(aiRows){
+    // 本日の品番一覧：まず「弁当カレンダー」（元データ、通常／子供／シニア）から直接計算する
+    let todayCodes = calendarSheets ? getTodayCodesFromCalendars(calendarSheets, loadedDateVal) : [];
+
+    // 弁当カレンダーから取得できなかった場合（元データが未接続、対象日が見つからない等）は、
+    // 従来どおり「AI　のシート」の「重複なしリスト作成用」ラベル（I列相当）を探し、その2列右（K列相当＝重複なし品番）を読み取る
+    if(todayCodes.length === 0 && aiRows){
       const pos = findLabelCellPos(aiRows, '重複なしリスト作成用');
       if(pos){
         const dataCol = pos.col + 2; // ラベル列(I)→連番列(J)→重複なし品番列(K)
