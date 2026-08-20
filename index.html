@@ -442,7 +442,7 @@
   </div>
 
   <div class="toolbar">
-    <div class="hint">仕込む対象の曜日ボタンを押すと、その曜日専用のスプレッドシートから本日の品番と弁当食数（通常・子供・シニア・学童ミニ）が自動で反映されます（インターネット接続が必要です）。数値は読込後も手入力で微調整できます。店舗欄は手入力です。</div>
+    <div class="hint">仕込む対象の曜日ボタンを押すと、その曜日専用のスプレッドシート（Googleドライブ上に保存）から本日の品番と弁当食数（通常・子供・シニア・学童ミニ）が自動で反映されます（インターネット接続が必要です）。数値は読込後も手入力で微調整できます。店舗欄は手入力です。</div>
     <div class="day-select-row">
       <span class="lbl">曜日を選択して読み込む</span>
       <button class="day-btn" data-day="mon">月</button>
@@ -977,6 +977,20 @@ const SHEET_GIDS = {
   '試作日々仕込み計算書': 410547205
 };
 
+// ---- 「おかずアイテム」「レシピ材料マスタ」（㌘単価・レシピなど）は曜日に関係なく、
+// 　　　共通の元データ（曜日の無いらくらく計算）から常に読み込みます。
+// 　　　元データを修正するだけで、月〜土すべてに自動で反映されます。
+const MASTER_CSV_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQC7wbaKCZSKUtW_7JMfW-4I0u8U5Iwqmh32HOLUF2PVwbmeyzicBu_bircu7kh1w/pub';
+const MASTER_GIDS = {
+  'おかずアイテム': 2134970399,
+  'レシピ材料マスタ': 1400752691
+};
+// ---- 「AIのシート」「試作日々仕込み計算書」（曜日ごとの食数・品番）は、選んだ曜日のスプレッドシートから読み込みます。
+const DAILY_GIDS = {
+  'AI\u3000のシート': 1836616603,
+  '試作日々仕込み計算書': 410547205
+};
+
 // 曜日ごとの「ウェブに公開」URLのbase部分（"/pub" までの部分）。
 // 各曜日のスプレッドシートで「ウェブに公開」を行ったら、発行されたURLのbase部分をここに設定してください。
 // base が空文字のままの曜日は「未設定」としてボタンが薄く表示され、押しても案内メッセージが出ます。
@@ -1021,15 +1035,25 @@ function loadFromCsv(dayKey){
   }
   setActiveDayBtn(dayKey);
   statusEl.textContent = `読み込み中…（${dayConf.label}のスプレッドシートに接続しています）`;
-  const names = Object.keys(SHEET_GIDS);
-  Promise.all(names.map(name =>
-    fetch(csvUrl(dayConf.base, SHEET_GIDS[name])).then(res=>{
+
+  // おかずアイテム／レシピ材料マスタ＝共通の元データから、AIのシート／試作日々仕込み計算書＝選んだ曜日のシートから取得
+  const masterNames = Object.keys(MASTER_GIDS);
+  const dailyNames = Object.keys(DAILY_GIDS);
+  const masterFetches = masterNames.map(name =>
+    fetch(csvUrl(MASTER_CSV_BASE, MASTER_GIDS[name])).then(res=>{
+      if(!res.ok) throw new Error(`${name}シート（元データ）の取得に失敗しました（HTTP ${res.status}）`);
+      return res.text();
+    }).then(text => csvParseToRows(text))
+  );
+  const dailyFetches = dailyNames.map(name =>
+    fetch(csvUrl(dayConf.base, DAILY_GIDS[name])).then(res=>{
       if(!res.ok) throw new Error(`${name}シートの取得に失敗しました（HTTP ${res.status}）`);
       return res.text();
     }).then(text => csvParseToRows(text))
-  )).then(results=>{
+  );
+  Promise.all([...masterFetches, ...dailyFetches]).then(results=>{
     const sheets = {};
-    names.forEach((name, i)=>{ sheets[name] = results[i]; });
+    [...masterNames, ...dailyNames].forEach((name, i)=>{ sheets[name] = results[i]; });
     const itemRows = sheets['おかずアイテム'];
     const matRows = sheets['レシピ材料マスタ'];
     const aiRows = sheets['AI\u3000のシート'];
