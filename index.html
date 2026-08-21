@@ -150,6 +150,24 @@
     border-radius:2px;
   }
   .toolbar-right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .print-opt{
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; color:var(--ink-soft);
+    background:#f2efe6;
+    border:1px solid var(--line);
+    padding:5px 10px;
+    border-radius:2px;
+  }
+  .print-opt select{
+    font-family:'Zen Kaku Gothic New', sans-serif;
+    font-size:13px;
+    font-weight:700;
+    color:var(--ink);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:3px 4px;
+    background:#fff;
+  }
 
   .day-select-row{
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
@@ -454,44 +472,53 @@
 
   datalist{}
 
+  /* 用紙の向き・列数・改ページ位置（@page, .grid列数, .ticket改ページ）はJSで動的に設定します（printOrientation/printPerPageの選択に応じて#printDynamicStyleに書き込み）。ここでは印刷向き文字サイズ等の共通調整のみ。 */
   @media print{
-    @page{ size: A4 landscape; margin: 8mm; }
     body{ background:#fff; padding:0; }
     header, .settings, .toolbar, .load-banner, footer.summary{ display:none !important; }
-    .grid{ grid-template-columns: repeat(3,1fr); gap:8px; }
     .ticket{ box-shadow:none; break-inside: avoid; }
-    .ticket:nth-child(6n){ break-after: page; }
 
-    /* 横向き印刷で6アイテム（3列×2行）が1枚に収まるよう余白・行間を詰める（材料の数字サイズ＝老眼対策は変更しない） */
-    .ticket .top{ padding:6px 8px 4px; }
-    .idx-row{ margin-bottom:3px; }
-    .hinban-row{ margin-bottom:3px; }
-    .hinmei{ margin-bottom:4px; min-height:auto; }
-    .stores-title{ font-size:8px; margin-bottom:3px; }
-    .store-item span{ font-size:10px; }
-    .store-item input{ width:34px; font-size:12px; padding:2px; }
-    .store-sum-val{ font-size:14px; }
-    .store-sum-g{ font-size:9px; }
-    .stores{ margin:4px -8px 0; padding:4px 8px; }
-    .store-grid{ gap:2px; }
-    .calc-block{ margin-top:4px; padding-top:3px; }
-    .calc-row{ padding:0; font-size:9px; gap:3px; }
-    .calc-label{ width:28px; }
-    .calc-total-row{ padding:2px 4px; font-size:10px; margin-top:2px; }
-    .calc-total-row .v-total-g{ font-size:11px; }
-    .calc-grand-row{ margin-top:2px; padding:3px 5px; }
-    .calc-grand-label{ font-size:9px; }
-    .v-grand-cut{ font-size:13px; }
-    .materials{ padding:4px 8px; }
-    .materials-list{ gap:1px 6px; }
+    /* 印刷時の文字サイズ・余白調整（老眼対策のため大きめに設定。材料の数字サイズは変更しない） */
+    .ticket .top{ padding:10px 12px 8px; }
+    .idx-row{ margin-bottom:6px; }
+    .hinban-row{ margin-bottom:6px; }
+    .hinmei{ margin-bottom:7px; min-height:auto; }
+    .stores-title{ font-size:11px; margin-bottom:5px; }
+    .store-item span{ font-size:13px; }
+    .store-item input{ width:46px; font-size:16px; padding:4px; }
+    .store-sum-val{ font-size:18px; }
+    .store-sum-g{ font-size:11px; }
+    .stores{ margin:6px -12px 0; padding:6px 12px; }
+    .store-grid{ gap:5px; }
+    .calc-block{ margin-top:6px; padding-top:5px; }
+    .calc-row{ padding:2px 0; font-size:13px; }
+    .calc-total-row{ padding:4px 7px; font-size:14px; margin-top:3px; }
+    .calc-total-row .v-total-g{ font-size:15px; }
+    .calc-grand-row{ margin-top:4px; padding:5px 8px; }
+    .calc-grand-label{ font-size:12px; }
+    .v-grand-cut{ font-size:18px; }
+    .materials{ padding:7px 12px; }
+    .materials-list{ gap:3px 8px; }
     .tear{ display:none; }
-    .total-box{ padding:5px 8px 6px; }
-    .total-box .val{ font-size:18px; }
-    .prep-check{ padding:3px 8px; }
-    .prep-check input[type="checkbox"]{ width:16px; height:16px; }
-    .item-memo{ padding:3px 8px; }
-    .item-memo textarea{ min-height:38px; font-size:11px; border:1px solid #999; }
+    .total-box{ padding:8px 12px 9px; }
+    .total-box .val{ font-size:26px; }
+    .prep-check{ padding:5px 12px; }
+    .prep-check input[type="checkbox"]{ width:19px; height:19px; }
+    .item-memo{ padding:5px 12px; }
+    .item-memo textarea{ min-height:56px; font-size:12px; border:1px solid #999; }
     .ticket.is-done{ opacity:1; } /* 印刷時は薄くしない（チェック済みも見た目はそのまま印刷） */
+
+    /* 材料の行数に応じた自動縮小（品目によって材料が3〜4個のものも20個近いものもあるため、
+       行数が多い品目だけ文字を小さくして1品目分の高さを抑える。少ない品目は通常サイズのまま） */
+    .materials.mat-dense-1 .materials-list .mamt{ font-size:16px; }
+    .materials.mat-dense-1 .materials-list .mname{ font-size:11px; }
+    .materials.mat-dense-1 .materials-list{ gap:1px 6px; }
+    .materials.mat-dense-2 .materials-list .mamt{ font-size:13px; }
+    .materials.mat-dense-2 .materials-list .mname{ font-size:10px; }
+    .materials.mat-dense-2 .materials-list{ gap:0px 5px; }
+    .materials.mat-dense-3 .materials-list .mamt{ font-size:11px; }
+    .materials.mat-dense-3 .materials-list .mname{ font-size:9px; }
+    .materials.mat-dense-3 .materials-list{ gap:0px 4px; }
   }
 </style>
 </head>
@@ -552,6 +579,21 @@
       <span class="data-status" id="dataStatus">データ：内蔵データ（らくらく仕込計算.xlsxより 2026-08-16 反映済み）</span>
       <button class="primary secondary" id="loadBtn">ローカルのExcelファイルを読み込む</button>
       <input type="file" id="fileInput" accept=".xlsx" style="display:none;">
+      <label class="print-opt">印刷の向き
+        <select id="printOrientation">
+          <option value="landscape" selected>横</option>
+          <option value="portrait">縦</option>
+        </select>
+      </label>
+      <label class="print-opt">1ページの品目数
+        <select id="printPerPage">
+          <option value="2">2品目</option>
+          <option value="3">3品目</option>
+          <option value="4" selected>4品目</option>
+          <option value="6">6品目</option>
+          <option value="8">8品目</option>
+        </select>
+      </label>
       <button class="primary" id="printBtn">この内容を印刷する</button>
     </div>
   </div>
@@ -776,7 +818,7 @@ function fmt(n){
 function roundup(n){ return Math.ceil(n - 1e-9); }
 
 // ---- 設定値の一時保存（タブを閉じるまで保持。誤ってページが再読み込みされても消えない） ----
-const SS_KEYS = ['theDate','cntNormal','cntKid','cntSenior','cntMini','miniHinban','itemCount'];
+const SS_KEYS = ['theDate','cntNormal','cntKid','cntSenior','cntMini','miniHinban','itemCount','printOrientation','printPerPage'];
 function saveSettingsToSession(){
   try{
     SS_KEYS.forEach(id=>{
@@ -1021,9 +1063,18 @@ function recalcTicket(t){
 }
 
 function renderMaterials(t, hinban, packCount){
+  const materialsEl = t.querySelector('.materials');
   const listEl = t.querySelector('.materials-list');
   const noteEl = t.querySelector('.mat-pack-note');
   const rows = hinban !== null ? INGREDIENTS[hinban] : null;
+
+  // 材料の行数に応じて印刷時の文字サイズを自動で縮小するクラスを付与
+  materialsEl.classList.remove('mat-dense-1','mat-dense-2','mat-dense-3');
+  const rowCount = rows ? rows.length : 0;
+  if(rowCount > 15) materialsEl.classList.add('mat-dense-3');
+  else if(rowCount > 10) materialsEl.classList.add('mat-dense-2');
+  else if(rowCount > 6) materialsEl.classList.add('mat-dense-1');
+
   if(!rows){
     listEl.innerHTML = '<div class="materials-empty">（レシピ未登録・仕込計算表で確認してください）</div>';
     noteEl.textContent = '';
@@ -1054,7 +1105,34 @@ function recalcAll(){
 
 document.getElementById('itemCount').addEventListener('change', ()=>{ buildTickets(); saveSettingsToSession(); });
 document.getElementById('theDate').addEventListener('input', saveSettingsToSession);
-document.getElementById('printBtn').addEventListener('click', ()=>window.print());
+
+// ---- 印刷設定（向き・1ページの品目数）を画面上で変更できるようにする ----
+// 品目数が多いほど列数を増やし、6品目までは1行に収めて縦方向の余裕を確保する
+// （材料の行数が品目によって3〜20行以上とバラつくため、行を増やすほど高さ超過のリスクが上がる）
+function applyPrintSettings(){
+  const orientation = document.getElementById('printOrientation').value || 'landscape';
+  const perPage = parseInt(document.getElementById('printPerPage').value) || 4;
+  let cols;
+  if(perPage <= 6){ cols = perPage; }
+  else { cols = Math.ceil(perPage/2); }
+
+  let styleEl = document.getElementById('printDynamicStyle');
+  if(!styleEl){
+    styleEl = document.createElement('style');
+    styleEl.id = 'printDynamicStyle';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `
+    @media print{
+      @page{ size: A4 ${orientation}; margin: 2mm; }
+      .grid{ grid-template-columns: repeat(${cols}, 1fr); gap:10px; }
+      .ticket:nth-child(${perPage}n){ break-after: page; }
+    }
+  `;
+}
+document.getElementById('printOrientation').addEventListener('change', ()=>{ applyPrintSettings(); saveSettingsToSession(); });
+document.getElementById('printPerPage').addEventListener('change', ()=>{ applyPrintSettings(); saveSettingsToSession(); });
+document.getElementById('printBtn').addEventListener('click', ()=>{ applyPrintSettings(); window.print(); });
 
 // ---- Excelファイル読み込み（PC/iPad内の仕込計算Excelを直接参照） ----
 document.getElementById('loadBtn').addEventListener('click', ()=> document.getElementById('fileInput').click());
@@ -1533,6 +1611,7 @@ function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheet
 const d = new Date();
 document.getElementById('theDate').value = d.toISOString().slice(0,10);
 restoreSettingsFromSession();
+applyPrintSettings();
 
 buildTickets();
 markUnsetDayButtons();
