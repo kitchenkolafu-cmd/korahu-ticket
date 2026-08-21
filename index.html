@@ -460,33 +460,37 @@
     header, .settings, .toolbar, .load-banner, footer.summary{ display:none !important; }
     .grid{ grid-template-columns: repeat(3,1fr); gap:8px; }
     .ticket{ box-shadow:none; break-inside: avoid; }
-    .ticket:nth-child(5n){ break-after: page; }
+    .ticket:nth-child(6n){ break-after: page; }
 
-    /* 横向き印刷で5アイテムが1枚に収まるよう余白・行間を詰める（材料の数字サイズ＝老眼対策は変更しない） */
-    .ticket .top{ padding:8px 10px 6px; }
-    .idx-row{ margin-bottom:5px; }
-    .hinban-row{ margin-bottom:5px; }
-    .hinmei{ margin-bottom:6px; min-height:auto; }
-    .calc-block{ margin-top:6px; padding-top:5px; }
-    .calc-row{ padding:1px 0; font-size:11px; }
-    .calc-total-row{ padding:4px 6px; font-size:12px; }
-    .calc-total-row .v-total-g{ font-size:13px; }
-    .calc-grand-row{ margin-top:4px; padding:5px 8px; }
-    .calc-grand-label{ font-size:11px; }
-    .v-grand-cut{ font-size:16px; }
-    .store-sum-val{ font-size:16px; }
-    .store-sum-g{ font-size:10px; }
-    .stores{ margin:6px -10px 0; padding:6px 10px; }
-    .store-grid{ gap:3px; }
-    .materials{ padding:6px 10px; }
-    .materials-list{ gap:2px 8px; }
+    /* 横向き印刷で6アイテム（3列×2行）が1枚に収まるよう余白・行間を詰める（材料の数字サイズ＝老眼対策は変更しない） */
+    .ticket .top{ padding:6px 8px 4px; }
+    .idx-row{ margin-bottom:3px; }
+    .hinban-row{ margin-bottom:3px; }
+    .hinmei{ margin-bottom:4px; min-height:auto; }
+    .stores-title{ font-size:8px; margin-bottom:3px; }
+    .store-item span{ font-size:10px; }
+    .store-item input{ width:34px; font-size:12px; padding:2px; }
+    .store-sum-val{ font-size:14px; }
+    .store-sum-g{ font-size:9px; }
+    .stores{ margin:4px -8px 0; padding:4px 8px; }
+    .store-grid{ gap:2px; }
+    .calc-block{ margin-top:4px; padding-top:3px; }
+    .calc-row{ padding:0; font-size:9px; gap:3px; }
+    .calc-label{ width:28px; }
+    .calc-total-row{ padding:2px 4px; font-size:10px; margin-top:2px; }
+    .calc-total-row .v-total-g{ font-size:11px; }
+    .calc-grand-row{ margin-top:2px; padding:3px 5px; }
+    .calc-grand-label{ font-size:9px; }
+    .v-grand-cut{ font-size:13px; }
+    .materials{ padding:4px 8px; }
+    .materials-list{ gap:1px 6px; }
     .tear{ display:none; }
-    .total-box{ padding:8px 10px 9px; }
-    .total-box .val{ font-size:22px; }
-    .prep-check{ padding:4px 10px; }
-    .prep-check input[type="checkbox"]{ width:18px; height:18px; }
-    .item-memo{ padding:4px 10px; }
-    .item-memo textarea{ min-height:60px; font-size:11px; border:1px solid #999; }
+    .total-box{ padding:5px 8px 6px; }
+    .total-box .val{ font-size:18px; }
+    .prep-check{ padding:3px 8px; }
+    .prep-check input[type="checkbox"]{ width:16px; height:16px; }
+    .item-memo{ padding:3px 8px; }
+    .item-memo textarea{ min-height:38px; font-size:11px; border:1px solid #999; }
     .ticket.is-done{ opacity:1; } /* 印刷時は薄くしない（チェック済みも見た目はそのまま印刷） */
   }
 </style>
