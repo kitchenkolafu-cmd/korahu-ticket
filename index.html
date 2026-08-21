@@ -280,6 +280,7 @@
   }
   .subrow .v{ font-family:'JetBrains Mono', monospace; font-weight:700; }
   .subrow.onep-highlight{
+    display:none;
     background:#e3f2fd;
     border-top:1px solid #64b5f6;
     border-bottom:1px solid #64b5f6;
@@ -351,9 +352,10 @@
 
   .prep-check{
     display:flex; align-items:center; justify-content:center;
-    padding:10px 14px;
+    padding:6px 14px;
     border-top:1px dashed var(--line);
     background:#fff;
+    margin-top:auto;
   }
   .prep-check label{
     display:flex; align-items:center; gap:8px;
@@ -371,7 +373,7 @@
   .item-memo{ padding:8px 14px; border-top:1px dashed var(--line); background:#fff; }
   .item-memo textarea{
     width:100%;
-    min-height:64px;
+    min-height:100px;
     border:1px solid var(--line);
     border-radius:2px;
     padding:8px 10px;
@@ -420,10 +422,10 @@
     .tear{ display:none; }
     .total-box{ padding:8px 10px 9px; }
     .total-box .val{ font-size:22px; }
-    .prep-check{ padding:6px 10px; }
+    .prep-check{ padding:4px 10px; }
     .prep-check input[type="checkbox"]{ width:18px; height:18px; }
     .item-memo{ padding:4px 10px; }
-    .item-memo textarea{ min-height:44px; font-size:11px; border:1px solid #999; }
+    .item-memo textarea{ min-height:60px; font-size:11px; border:1px solid #999; }
     .ticket.is-done{ opacity:1; } /* 印刷時は薄くしない（チェック済みも見た目はそのまま印刷） */
   }
 </style>
