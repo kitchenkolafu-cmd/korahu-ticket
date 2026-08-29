@@ -730,6 +730,12 @@ const INGREDIENTS = {"22":[["もち米",100],["鶏もも",15],["ごぼう",15],[
 // 品番+材料名ごとの「正しい1パックの分量(g)」上書き値（分量の補正表シートより）。
 // CORRECTIONS[hinban][材料名] があれば、レシピの値よりこちらを優先して使う。
 const CORRECTIONS = {};
+// 「AI のシート」に載っている“今日実際に弁当に使われている品番”ごとの1食量(g)。
+// { normal:{品番:1食量}, kid:{...}, senior:{...} }
+// マスタ（おかずアイテムのD/E列）は「その品目が弁当に使われる場合の固定レシピ値」であり、
+// 今日実際に弁当に採用されているかどうかとは無関係。このAI_BENTOに載っていない品番は
+// 「今日の弁当メニューではない仕込みアイテム」として弁当分の計算を0にするために使う。
+const AI_BENTO = { normal:{}, kid:{}, senior:{} };
 const stores = ['大丸','日限山','センター南','ほんもく','みんな'];
 const circled = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫'];
 
@@ -765,6 +771,26 @@ function parseAmount(v){
   if(frac) return parseInt(frac[1],10)/parseInt(frac[2],10);
   const num = Number(s);
   return isNaN(num) ? 0 : num;
+}
+// ---- 「AI のシート」の通常弁当／子供弁当／シニア弁当の各ブロックから、
+// 　　　品番ごとの1食量(g)を読み取る（＝今日実際に弁当に使われている品番の一覧） ----
+function parseAiBento(aiRows){
+  const result = { normal:{}, kid:{}, senior:{} };
+  if(!aiRows) return result;
+  let section = null;
+  for(let i=0;i<aiRows.length;i++){
+    const row = aiRows[i];
+    if(!row) continue;
+    const label = row[0];
+    if(label === '通常弁当'){ section = 'normal'; }
+    else if(label === '子供弁当'){ section = 'kid'; }
+    else if(label === 'シニア弁当'){ section = 'senior'; }
+    else if(typeof label === 'string' && label.indexOf('小計') !== -1){ section = null; }
+    if(section && row[1] !== null && row[1] !== undefined && row[1] !== ''){
+      result[section][row[1]] = parseAmount(row[3]);
+    }
+  }
+  return result;
 }
 function fmt(n){
   if (n === '' || n === null || isNaN(n)) return '0';
@@ -962,8 +988,12 @@ function recalcTicket(t){
   }
 
   const onep = parseAmount(item[2]);
-  const normalP = parseAmount(item[3]);
-  const kidP = parseAmount(item[4]);
+  // 弁当分の量は、マスタ（おかずアイテムのD/E列＝固定レシピ値）ではなく、
+  // 「AI のシート」に載っている“今日実際に弁当に使われている品番”からだけ取る。
+  // 該当がない（＝今日の弁当メニューではない仕込みアイテム）場合は0にする。
+  const normalP = Object.prototype.hasOwnProperty.call(AI_BENTO.normal, hinban) ? AI_BENTO.normal[hinban] : 0;
+  const seniorP = Object.prototype.hasOwnProperty.call(AI_BENTO.senior, hinban) ? AI_BENTO.senior[hinban] : 0;
+  const kidP = isMini ? parseAmount(item[4]) : (Object.prototype.hasOwnProperty.call(AI_BENTO.kid, hinban) ? AI_BENTO.kid[hinban] : 0);
   const unit = (item[6] || '').toString().trim() || 'g';
 
   const cntNormal = Number(document.getElementById('cntNormal').value) || 0;
@@ -975,7 +1005,7 @@ function recalcTicket(t){
 
   t.querySelector('.v-normal').textContent = fmt(normalP)+unit;
   t.querySelector('.v-kid').textContent = fmt(kidP)+unit;
-  t.querySelector('.v-senior').textContent = fmt(normalP)+unit;
+  t.querySelector('.v-senior').textContent = fmt(seniorP)+unit;
 
   const cntNormalEl = t.querySelector('.v-normal-cnt');
   const cntKidEl = t.querySelector('.v-kid-cnt');
@@ -989,7 +1019,7 @@ function recalcTicket(t){
 
   const normalSub = normalP*cntNormal;
   const kidSub = kidP*kidCount;
-  const seniorSub = normalP*cntSenior;
+  const seniorSub = seniorP*cntSenior;
   const totalG = normalSub + kidSub + seniorSub;
   t.querySelector('.v-normal-sub').textContent = fmt(normalSub)+unit;
   t.querySelector('.v-kid-sub').textContent = fmt(kidSub)+unit;
@@ -1411,6 +1441,15 @@ function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheet
       dl.appendChild(opt);
     });
     document.getElementById('itemMasterCount').textContent = ITEMS.length;
+
+    // 「AI　のシート」から、今日実際に弁当に使われている品番ごとの1食量(g)を読み取る
+    const newAiBento = parseAiBento(aiRows);
+    Object.keys(AI_BENTO.normal).forEach(k=>delete AI_BENTO.normal[k]);
+    Object.keys(AI_BENTO.kid).forEach(k=>delete AI_BENTO.kid[k]);
+    Object.keys(AI_BENTO.senior).forEach(k=>delete AI_BENTO.senior[k]);
+    Object.assign(AI_BENTO.normal, newAiBento.normal);
+    Object.assign(AI_BENTO.kid, newAiBento.kid);
+    Object.assign(AI_BENTO.senior, newAiBento.senior);
 
     // 「AI　のシート」の日付・「通常弁当　食数」等のラベルを探し、右隣のセルを読む（行がずれても対応可能）
     let countsApplied = false;
