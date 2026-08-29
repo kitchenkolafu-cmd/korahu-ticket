@@ -1252,14 +1252,14 @@ const SHEET_GIDS = {
 // ---- 「おかずアイテム」「レシピ材料マスタ」（㌘単価・レシピなど）は曜日に関係なく、
 // 　　　共通の元データ（曜日の無いらくらく計算）から常に読み込みます。
 // 　　　元データを修正するだけで、月〜土すべてに自動で反映されます。
-const MASTER_CSV_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQC7wbaKCZSKUtW_7JMfW-4I0u8U5Iwqmh32HOLUF2PVwbmeyzicBu_bircu7kh1w/pub';
+const MASTER_CSV_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTiJf8qymeGZ-QziivQY9fz-QU3a9GZgpWBzAcTovwuWJau-WIXAAj57Bny3vRyNLrS3ANl5bsl40x8/pub';
 const MASTER_GIDS = {
-  'おかずアイテム': 2134970399,
-  'レシピ材料マスタ': 1400752691
+  'おかずアイテム': 661868110,
+  'レシピ材料マスタ': 1025020063
 };
 // 「分量の補正表」タブのgid（元データスプレッドシートで、そのタブを開いたときの
 // ブラウザURL末尾の #gid=数字 を貼ってください）。未設定の間は補正なしで動作します。
-const CORRECTION_GID = 871755189;
+const CORRECTION_GID = 1371567301;
 
 // ---- 「惣菜別計算表」（店舗別パック数・①〜⑮の品番が実際に入力されているシート）は、
 // 　　　曜日ごとに別々のファイル（月〜土、それぞれ独立して3日先まで先行入力できる）の中の
@@ -1278,16 +1278,16 @@ const WEEKDAY_SOUBETU = {
 // 　　　月をまたいでも先行入力できるよう、各カテゴリーとも「今月」「来月」の固定タブを1枚ずつ
 // 　　　使い回す方式にしています（月が変わるたびに新しいタブを作る必要はなく、中身だけ書き換えます）。
 // 　　　各タブ自身の「対象月の1日」を見て、計算したい日付に合う方を自動で選びます。
-const CALENDAR_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqPjg3-U_slQHXuDUXW2H1GjL6cSkl3DecoHLeaSFPYTHrJlEYmO6FSGMhPF7q7A/pub';
+const CALENDAR_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTiJf8qymeGZ-QziivQY9fz-QU3a9GZgpWBzAcTovwuWJau-WIXAAj57Bny3vRyNLrS3ANl5bsl40x8/pub';
 const CALENDAR_GIDS_THIS_MONTH = {
-  '弁当カレンダー_通常': 490584681,
-  '弁当カレンダー_子供': 1677726908,
-  '弁当カレンダー_シニア': 1050754397
+  '弁当カレンダー_通常': 1882749264,
+  '弁当カレンダー_子供': 1411125177,
+  '弁当カレンダー_シニア': 1704109959
 };
 const CALENDAR_GIDS_NEXT_MONTH = {
-  '弁当カレンダー_通常': 80312800,
-  '弁当カレンダー_子供': 1419645891,
-  '弁当カレンダー_シニア': 1253275005
+  '弁当カレンダー_通常': 2046191933,
+  '弁当カレンダー_子供': 1754867331,
+  '弁当カレンダー_シニア': 1245518348
 };
 // Date#getDay() の戻り値（0=日,1=月,…6=土）→ カレンダー表内の列位置。日曜日は運用対象外のため非対応。
 const CALENDAR_DAY_COLS = { 1:1, 2:3, 3:5, 4:7, 5:9, 6:11 };
