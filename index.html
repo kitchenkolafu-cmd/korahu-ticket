@@ -89,7 +89,7 @@
   /* ---- Settings strip ---- */
   .settings{
     display:grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap:1px;
     background:var(--line-strong);
     border:1px solid var(--line-strong);
@@ -1159,6 +1159,24 @@ function parseSoubetsu(rows){
   return result;
 }
 
+// ---- 惣菜別計算表の「日付」欄（例："水曜日, 8月 19, 2026"）をYYYY-MM-DD形式に変換する ----
+// （このシートは曜日ごとではなく「その時点の1日分」を都度上書きして使うものなので、
+// 　今読み込んだ曜日ボタン先の日付と一致するときだけ信用して使う。ズレていると
+// 　別の日の品番・店舗別パック数が誤って表示されてしまうため）
+function parseSoubetsuDate(rows){
+  if(!rows) return null;
+  const pos = findLabelCellPos(rows, '日付');
+  if(!pos) return null;
+  const row = rows[pos.row];
+  const raw = row ? row[pos.col+2] : null;
+  if(typeof raw !== 'string') return null;
+  const m = raw.match(/(\d{1,2})\s*月\s*(\d{1,2})[^\d]+(\d{4})/);
+  if(!m) return null;
+  const month = m[1].padStart(2,'0');
+  const day = m[2].padStart(2,'0');
+  return `${m[3]}-${month}-${day}`;
+}
+
 // ---- 読み込み結果バナー（読み込み完了サマリー・警告表示） ----
 function showLoadBanner(kind, titleText, lines){
   const el = document.getElementById('loadBanner');
@@ -1618,10 +1636,15 @@ function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheet
 
     // 惣菜別計算表に①〜⑮のいずれかの品番が入力済みなら、そちらを最優先で使う
     // （品番だけでなく、店舗別パック数もそのまま反映できるため。手入力の二度手間を防ぐ）
+    // ただし惣菜別計算表は曜日ごとではなく「その時点の1日分」を都度上書きして使うシートなので、
+    // シート自身の日付が今読み込んだ曜日の日付と一致しているときだけ信用する
+    // （一致していないと、別の日の品番・店舗別パック数がそのまま出てしまうため）
     const soubetuData = parseSoubetsu(soubetuRows);
     const soubetuFilled = soubetuData.filter(d => d && d.hinban !== null);
+    const soubetuDateIso = parseSoubetsuDate(soubetuRows);
+    const soubetuDateMatches = !!(soubetuDateIso && loadedDateVal && soubetuDateIso === loadedDateVal);
 
-    if(soubetuFilled.length > 0){
+    if(soubetuFilled.length > 0 && soubetuDateMatches){
       buildTickets();
       const tickets = document.querySelectorAll('.ticket');
       soubetuData.forEach((d, i)=>{
@@ -1653,6 +1676,7 @@ function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheet
     if(dateMismatch) warnLines.push(`⚠ 読み込んだデータの日付（<b>${loadedDateVal}</b>）と、らくらく側の対象日設定（試作日々仕込み計算書 <b>${configDateLabel}</b>）が一致していません。品番等の呼び出し元がズレている可能性があります。Excelを開いて再計算・保存してください。`);
     if(miniMismatch) warnLines.push(`⚠ 学童ミニ弁当の人数が${fmt(miniCntNow)}人ありますが、専用品番が設定されていません。Excelの「試作日々仕込み計算書」G15を確認してください。`);
     if(missingCodes.length) warnLines.push(`⚠ 品番マスタに見つからない品番があります：${missingCodes.join('、')}（「おかずアイテム」シートを確認してください）`);
+    if(soubetuFilled.length > 0 && !soubetuDateMatches) warnLines.push(`⚠ 惣菜別計算表の日付（<b>${soubetuDateIso || '不明'}</b>）が、今読み込んだ${loadedDateVal ? '<b>'+loadedDateVal+'</b>' : 'この曜日'}と一致していないため、惣菜別計算表の品番・店舗別パック数は使用していません（弁当カレンダーからの自動推定を使用しています）。惣菜別計算表を今日の分に更新してください。`);
 
     const summaryLine = `${loadedDateVal || '（日付不明）'}／通常${fmt(Number(document.getElementById('cntNormal').value)||0)}・子供${fmt(Number(document.getElementById('cntKid').value)||0)}・シニア${fmt(Number(document.getElementById('cntSenior').value)||0)}・ミニ${fmt(miniCntNow)}／品目${todayCodes.length}件`;
 
