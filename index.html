@@ -1262,19 +1262,32 @@ const MASTER_GIDS = {
 const CORRECTION_GID = 871755189;
 
 // ---- 「惣菜別計算表」（店舗別パック数・①〜⑮の品番が実際に入力されているシート）は、
-// 　　　店舗別パック数をチケットにそのまま反映するための専用スプレッドシート（新データ）から読み込みます。
-// 　　　未設定・取得失敗の場合は、従来通り弁当カレンダーからの自動推定＋店舗別パック数は手入力になります。
-const SOUBETU_CSV_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqPjg3-U_slQHXuDUXW2H1GjL6cSkl3DecoHLeaSFPYTHrJlEYmO6FSGMhPF7q7A/pub';
-const SOUBETU_GID = 1600127637;
+// 　　　曜日ごとに別々のファイル（月〜土、それぞれ独立して3日先まで先行入力できる）の中の
+// 　　　専用タブから読み込みます。未設定・取得失敗の曜日は、従来通り弁当カレンダーからの
+// 　　　自動推定＋店舗別パック数は手入力にフォールバックします。
+const WEEKDAY_SOUBETU = {
+  mon: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8X5U-X2oXF5bSldckGIue8dZ4W1Nej7Ttmord8_1ILnqNEaePWdcEmiRnyOYMHg/pub', gid: 1506565769 },
+  tue: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRfx0SU7lStmne4Fir9zAe9yN6tLBcqsEMMw4RHAg9PxwhKJKJ7UDinhpxLnC-RAQ/pub', gid: 1548780720 },
+  wed: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQj6i4XE0UQr0P9_Jcxvti1QUcgSNlHSy_kn7S8wx1hjCG8-t_gvGRUxuST9ci7RQ/pub', gid: 200897327 },
+  thu: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTwZsP_fzEinasGVwmswBKyqEtpnHPBIc7BmMYA6XzYHKVsjmFzNQBBMHa24U1MIA/pub', gid: 512983175 },
+  fri: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-SM-1DFdrwKGp9uIxKE8Rj8Zl3zH-bTIk1aVREweKkQ1GVz_w3AddQsp9r7h5YQ/pub', gid: 2019110324 },
+  sat: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRv8MxFKS-rYWWkaF1lh6a_np2iVU68-lOd3mluhNKdHqNTq9QE-hCFOLfDDkqYRQ/pub', gid: 1980907286 }
+};
 
-// ---- 「弁当カレンダー」（通常／子供／シニア）も曜日に関係なく、
-// 　　　共通の元データ（曜日の無いらくらく計算）から直接、対象日の品番を計算します。
-// 　　　元データのカレンダーを修正するだけで、月〜土すべてに自動で反映されます
-// 　　　（各曜日のスプレッドシート側の弁当カレンダータブは、もう編集しなくて大丈夫です）。
-const CALENDAR_GIDS = {
-  '弁当カレンダー_通常': 919540301,
-  '弁当カレンダー_子供': 1525879034,
-  '弁当カレンダー_シニア': 2132945730
+// ---- 「弁当カレンダー」（通常／子供／シニア）も曜日に関係なく、直接、対象日の品番を計算します。
+// 　　　月をまたいでも先行入力できるよう、各カテゴリーとも「今月」「来月」の固定タブを1枚ずつ
+// 　　　使い回す方式にしています（月が変わるたびに新しいタブを作る必要はなく、中身だけ書き換えます）。
+// 　　　各タブ自身の「対象月の1日」を見て、計算したい日付に合う方を自動で選びます。
+const CALENDAR_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTqPjg3-U_slQHXuDUXW2H1GjL6cSkl3DecoHLeaSFPYTHrJlEYmO6FSGMhPF7q7A/pub';
+const CALENDAR_GIDS_THIS_MONTH = {
+  '弁当カレンダー_通常': 490584681,
+  '弁当カレンダー_子供': 1677726908,
+  '弁当カレンダー_シニア': 1050754397
+};
+const CALENDAR_GIDS_NEXT_MONTH = {
+  '弁当カレンダー_通常': 80312800,
+  '弁当カレンダー_子供': 1419645891,
+  '弁当カレンダー_シニア': 1253275005
 };
 // Date#getDay() の戻り値（0=日,1=月,…6=土）→ カレンダー表内の列位置。日曜日は運用対象外のため非対応。
 const CALENDAR_DAY_COLS = { 1:1, 2:3, 3:5, 4:7, 5:9, 6:11 };
@@ -1309,11 +1322,33 @@ function getCodesFromCalendarRows(calRows, isoDate){
   return codes;
 }
 
-// 「通常／子供／シニア」の3枚を合わせて、重複を除いた本日の品番一覧を作る（最大12件）
+// ---- カレンダータブ自身の「対象月の1日」（例："2026年8月"）から年月(YYYY-MM)を読み取る ----
+function parseCalendarYearMonth(rows){
+  if(!rows) return null;
+  const raw = findLabelRightValue(rows, '対象月の1日', true);
+  if(typeof raw !== 'string') return null;
+  const m = raw.match(/(\d{4})\s*年\s*(\d{1,2})\s*月/);
+  if(!m) return null;
+  return `${m[1]}-${m[2].padStart(2,'0')}`;
+}
+
+// ---- 「今月」「来月」2枚のうち、計算したい日付（YYYY-MM-DD）の年月と一致する方を選ぶ ----
+// （タブ名ではなく、タブ自身に書かれた「対象月の1日」で判定するので、中身の入れ替えだけで
+// 　常に正しい方が自動選択される。どちらとも一致しない場合は「今月」側にフォールバックする）
+function pickCalendarRows(thisMonthRows, nextMonthRows, isoDate){
+  const targetYM = isoDate ? isoDate.slice(0,7) : null;
+  if(targetYM){
+    if(parseCalendarYearMonth(thisMonthRows) === targetYM) return thisMonthRows;
+    if(parseCalendarYearMonth(nextMonthRows) === targetYM) return nextMonthRows;
+  }
+  return thisMonthRows || nextMonthRows || null;
+}
+
+// 「通常／子供／シニア」の3枚を合わせて、重複を除いた本日の品番一覧を作る（最大15件）
 function getTodayCodesFromCalendars(calendarSheets, isoDate){
   if(!calendarSheets) return [];
   const combined = [];
-  Object.keys(CALENDAR_GIDS).forEach(name=>{
+  Object.keys(CALENDAR_GIDS_THIS_MONTH).forEach(name=>{
     getCodesFromCalendarRows(calendarSheets[name], isoDate).forEach(code=>combined.push(code));
   });
   const seen = new Set();
@@ -1375,9 +1410,10 @@ function loadFromCsv(dayKey){
   setActiveDayBtn(dayKey);
   statusEl.textContent = `読み込み中…（${dayConf.label}のスプレッドシートに接続しています）`;
 
-  // おかずアイテム／レシピ材料マスタ／弁当カレンダー＝共通の元データから、AIのシート／試作日々仕込み計算書＝選んだ曜日のシートから取得
+  // おかずアイテム／レシピ材料マスタ＝共通の元データから、AIのシート／試作日々仕込み計算書＝選んだ曜日のシートから、
+  // 弁当カレンダー＝「今月」「来月」固定タブ2枚×3種類（通常/子供/シニア）から取得
   const masterNames = Object.keys(MASTER_GIDS);
-  const calendarNames = Object.keys(CALENDAR_GIDS);
+  const calendarNames = Object.keys(CALENDAR_GIDS_THIS_MONTH);
   const dailyNames = Object.keys(DAILY_GIDS);
   const masterFetches = masterNames.map(name =>
     fetch(csvUrl(MASTER_CSV_BASE, MASTER_GIDS[name])).then(res=>{
@@ -1385,11 +1421,18 @@ function loadFromCsv(dayKey){
       return res.text();
     }).then(text => csvParseToRows(text))
   );
-  const calendarFetches = calendarNames.map(name =>
-    fetch(csvUrl(MASTER_CSV_BASE, CALENDAR_GIDS[name])).then(res=>{
-      if(!res.ok) throw new Error(`${name}シート（元データ）の取得に失敗しました（HTTP ${res.status}）`);
+  // 弁当カレンダーは「今月」「来月」とも任意扱い（片方が未整備・取得失敗でも全体は止めない）
+  const calendarFetchesThisMonth = calendarNames.map(name =>
+    fetch(csvUrl(CALENDAR_BASE, CALENDAR_GIDS_THIS_MONTH[name])).then(res=>{
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.text();
-    }).then(text => csvParseToRows(text))
+    }).then(text => csvParseToRows(text)).catch(err=>{ console.warn(`${name}（今月）の取得に失敗しました`, err); return null; })
+  );
+  const calendarFetchesNextMonth = calendarNames.map(name =>
+    fetch(csvUrl(CALENDAR_BASE, CALENDAR_GIDS_NEXT_MONTH[name])).then(res=>{
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    }).then(text => csvParseToRows(text)).catch(err=>{ console.warn(`${name}（来月）の取得に失敗しました`, err); return null; })
   );
   const dailyFetches = dailyNames.map(name =>
     fetch(csvUrl(dayConf.base, DAILY_GIDS[name])).then(res=>{
@@ -1404,25 +1447,29 @@ function loadFromCsv(dayKey){
         return res.text();
       }).then(text => csvParseToRows(text)).catch(err=>{ console.warn('分量の補正表の取得に失敗しました。補正なしで続行します。', err); return null; })
     : Promise.resolve(null);
-  // 惣菜別計算表も任意（gid未設定・取得失敗でも全体は止めず、従来通りの自動推定＋手入力で続行する）
-  const soubetuFetch = SOUBETU_GID
-    ? fetch(csvUrl(SOUBETU_CSV_BASE, SOUBETU_GID)).then(res=>{
+  // 惣菜別計算表も任意（曜日ごとの設定が未登録・取得失敗でも全体は止めず、従来通りの自動推定＋手入力で続行する）
+  const soubetuConf = WEEKDAY_SOUBETU[dayKey];
+  const soubetuFetch = (soubetuConf && soubetuConf.base)
+    ? fetch(csvUrl(soubetuConf.base, soubetuConf.gid)).then(res=>{
         if(!res.ok) throw new Error(`惣菜別計算表シートの取得に失敗しました（HTTP ${res.status}）`);
         return res.text();
       }).then(text => csvParseToRows(text)).catch(err=>{ console.warn('惣菜別計算表の取得に失敗しました。品番・店舗別パック数は従来通り自動推定/手入力になります。', err); return null; })
     : Promise.resolve(null);
-  Promise.all([...masterFetches, ...calendarFetches, ...dailyFetches, correctionFetch, soubetuFetch]).then(results=>{
+  Promise.all([...masterFetches, ...calendarFetchesThisMonth, ...calendarFetchesNextMonth, ...dailyFetches, correctionFetch, soubetuFetch]).then(results=>{
     const sheets = {};
-    [...masterNames, ...calendarNames, ...dailyNames].forEach((name, i)=>{ sheets[name] = results[i]; });
+    masterNames.forEach((name, i)=>{ sheets[name] = results[i]; });
+    const calendarSheetsThisMonth = {};
+    calendarNames.forEach((name, i)=>{ calendarSheetsThisMonth[name] = results[masterNames.length + i]; });
+    const calendarSheetsNextMonth = {};
+    calendarNames.forEach((name, i)=>{ calendarSheetsNextMonth[name] = results[masterNames.length + calendarNames.length + i]; });
+    dailyNames.forEach((name, i)=>{ sheets[name] = results[masterNames.length + calendarNames.length*2 + i]; });
     const corrRows = results[results.length - 2];
     const soubetuRows = results[results.length - 1];
     const itemRows = sheets['おかずアイテム'];
     const matRows = sheets['レシピ材料マスタ'];
     const aiRows = sheets['AI\u3000のシート'];
     const dailyRows = sheets['試作日々仕込み計算書'];
-    const calendarSheets = {};
-    calendarNames.forEach(name=>{ calendarSheets[name] = sheets[name]; });
-    processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheets, corrRows, soubetuRows, `${dayConf.label}のスプレッドシート`, statusEl);
+    processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheetsThisMonth, calendarSheetsNextMonth, corrRows, soubetuRows, `${dayConf.label}のスプレッドシート`, statusEl);
   }).catch(err=>{
     statusEl.textContent = '読み込みエラー：内蔵データのまま使用中';
     showLoadBanner('warn', `⚠ ${dayConf.label}のスプレッドシートへの接続に失敗しました`, [
@@ -1446,7 +1493,7 @@ function handleExcelLoad(e){
     const dailyRows = sheets['試作日々仕込み計算書'];
     const corrRows = sheets['分量の補正表'];
     const soubetuRows = sheets['惣菜別計算表'];
-    processLoadedSheets(itemRows, matRows, aiRows, dailyRows, null, corrRows, soubetuRows, file.name, statusEl);
+    processLoadedSheets(itemRows, matRows, aiRows, dailyRows, null, null, corrRows, soubetuRows, file.name, statusEl);
   }).catch(err=>{
     statusEl.textContent = '読み込みエラー：内蔵データのまま使用中';
     showLoadBanner('warn', '⚠ 読み込みエラー', ['「仕込計算」のExcelファイル（.xlsx）を選択してください。内蔵データのまま使用しています。']);
@@ -1457,7 +1504,7 @@ function handleExcelLoad(e){
 }
 
 // ---- 読み込んだ4シート分のデータを反映する共通処理（スプレッドシート経由・ローカルExcelファイル経由の両方から呼ばれる） ----
-function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheets, corrRows, soubetuRows, sourceLabel, statusEl){
+function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheetsThisMonth, calendarSheetsNextMonth, corrRows, soubetuRows, sourceLabel, statusEl){
     if(!itemRows || !matRows){
       statusEl.textContent = '読み込みエラー：内蔵データのまま使用中';
       showLoadBanner('warn', '⚠ 読み込みエラー', ['「おかずアイテム」または「レシピ材料マスタ」シートが見つかりませんでした。']);
@@ -1597,8 +1644,15 @@ function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheet
     const miniHinbanNow = Number(document.getElementById('miniHinban').value) || 0;
     const miniMismatch = miniCntNow > 0 && miniHinbanNow <= 0;
 
-    // 本日の品番一覧：まず「弁当カレンダー」（元データ、通常／子供／シニア）から直接計算する
-    let todayCodes = calendarSheets ? getTodayCodesFromCalendars(calendarSheets, loadedDateVal) : [];
+    // 本日の品番一覧：まず「弁当カレンダー」（通常／子供／シニア）から直接計算する。
+    // 各カテゴリーとも「今月」「来月」2枚のうち、対象日と同じ年月の方をタブ自身の記載から自動選択する
+    const calendarSheets = {};
+    Object.keys(CALENDAR_GIDS_THIS_MONTH).forEach(name=>{
+      const thisM = calendarSheetsThisMonth ? calendarSheetsThisMonth[name] : null;
+      const nextM = calendarSheetsNextMonth ? calendarSheetsNextMonth[name] : null;
+      calendarSheets[name] = pickCalendarRows(thisM, nextM, loadedDateVal);
+    });
+    let todayCodes = (calendarSheetsThisMonth || calendarSheetsNextMonth) ? getTodayCodesFromCalendars(calendarSheets, loadedDateVal) : [];
 
     // 弁当カレンダーから取得できなかった場合（元データが未接続、対象日が見つからない等）は、
     // 従来どおり「AI　のシート」の「重複なしリスト作成用」ラベル（I列相当）を探し、その2列右（K列相当＝重複なし品番）を読み取る
