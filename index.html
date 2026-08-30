@@ -509,23 +509,23 @@
   <div class="settings">
     <div class="cell">
       <span class="lbl">通常弁当 食数</span>
-      <input type="number" id="cntNormal" value="33">
+      <input type="number" id="cntNormal" value="" autocomplete="off">
     </div>
     <div class="cell">
       <span class="lbl">子供弁当 食数（全体）</span>
-      <input type="number" id="cntKid" value="77">
+      <input type="number" id="cntKid" value="" autocomplete="off">
     </div>
     <div class="cell">
       <span class="lbl">シニア弁当 食数</span>
-      <input type="number" id="cntSenior" value="10">
+      <input type="number" id="cntSenior" value="" autocomplete="off">
     </div>
     <div class="cell special">
       <span class="lbl">学童ミニ弁当 人数</span>
-      <input type="number" id="cntMini" value="14">
+      <input type="number" id="cntMini" value="" autocomplete="off">
     </div>
     <div class="cell special">
       <span class="lbl">ミニ専用アイテム品番</span>
-      <input type="number" id="miniHinban" value="5121">
+      <input type="number" id="miniHinban" value="" autocomplete="off">
     </div>
   </div>
 
@@ -541,7 +541,7 @@
       <button class="day-btn" data-day="sat">土</button>
     </div>
     <div class="toolbar-right">
-      <span class="data-status" id="dataStatus">データ：内蔵データ（らくらく仕込計算.xlsxより 2026-08-16 反映済み）</span>
+      <span class="data-status" id="dataStatus">データ：まだ読み込んでいません（下の曜日ボタンを押してください）</span>
       <button class="primary secondary" id="loadBtn">ローカルのExcelファイルを読み込む</button>
       <input type="file" id="fileInput" accept=".xlsx" style="display:none;">
       <button class="primary" id="printBtn">この内容を印刷する</button>
@@ -1268,7 +1268,7 @@ const CORRECTION_GID = 1371567301;
 const WEEKDAY_SOUBETU = {
   mon: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ8X5U-X2oXF5bSldckGIue8dZ4W1Nej7Ttmord8_1ILnqNEaePWdcEmiRnyOYMHg/pub', gid: 1506565769 },
   tue: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRfx0SU7lStmne4Fir9zAe9yN6tLBcqsEMMw4RHAg9PxwhKJKJ7UDinhpxLnC-RAQ/pub', gid: 1548780720 },
-  wed: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQj6i4XE0UQr0P9_Jcxvti1QUcgSNlHSy_kn7S8wx1hjCG8-t_gvGRUxuST9ci7RQ/pub', gid: 200897327 },
+  wed: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQjMmYNY7p8RBD4z6fgiOTPGjb2rs64JAqQiF1QjaFjyBQRCg-vO7XkM5uo2DI1lyFeUjtk0Xf2gdSz/pub', gid: 200897327 },
   thu: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTwZsP_fzEinasGVwmswBKyqEtpnHPBIc7BmMYA6XzYHKVsjmFzNQBBMHa24U1MIA/pub', gid: 512983175 },
   fri: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR-SM-1DFdrwKGp9uIxKE8Rj8Zl3zH-bTIk1aVREweKkQ1GVz_w3AddQsp9r7h5YQ/pub', gid: 2019110324 },
   sat: { base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRv8MxFKS-rYWWkaF1lh6a_np2iVU68-lOd3mluhNKdHqNTq9QE-hCFOLfDDkqYRQ/pub', gid: 1980907286 }
@@ -1758,7 +1758,9 @@ function processLoadedSheets(itemRows, matRows, aiRows, dailyRows, calendarSheet
 // 初期日付を今日に（保存済みの設定があればそちらを優先）
 const d = new Date();
 document.getElementById('theDate').value = d.toISOString().slice(0,10);
-restoreSettingsFromSession();
+// 前回の入力値は復元しない：読み込み前は必ず白紙状態にする（誤って古い数字を見て
+// 「反映されている」と勘違いするのを防ぐため）
+// restoreSettingsFromSession();
 
 buildTickets();
 markUnsetDayButtons();
