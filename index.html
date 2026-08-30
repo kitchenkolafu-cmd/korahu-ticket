@@ -1360,21 +1360,34 @@ function getTodayCodesFromCalendars(calendarSheets, isoDate){
 }
 
 // ---- 「AIのシート」「試作日々仕込み計算書」（曜日ごとの食数・品番）は、選んだ曜日のスプレッドシートから読み込みます。
-const DAILY_GIDS = {
+const DAILY_GIDS_DEFAULT = {
   'AI\u3000のシート': 1836616603,
   '試作日々仕込み計算書': 410547205
 };
+// 曜日ごとに、上記の共通gidと異なる場合はここで上書きする
+// （Googleスプレッドシート形式への変換で、シートのgidが変わることがあるため）
+const DAILY_GIDS_OVERRIDE = {
+  mon: { 'AI　のシート': 1090123468, '試作日々仕込み計算書': 1450588717 },
+  tue: { 'AI　のシート': 1029217663, '試作日々仕込み計算書': 2012544948 },
+  wed: { 'AI　のシート': 1895583823, '試作日々仕込み計算書': 1818026629 },
+  thu: { 'AI　のシート': 708207897, '試作日々仕込み計算書': 107884077 },
+  fri: { 'AI　のシート': 2004452647, '試作日々仕込み計算書': 1816445295 },
+  sat: { 'AI　のシート': 1220763821, '試作日々仕込み計算書': 1565431866 }
+};
+function getDailyGids(dayKey){
+  return Object.assign({}, DAILY_GIDS_DEFAULT, DAILY_GIDS_OVERRIDE[dayKey] || {});
+}
 
 // 曜日ごとの「ウェブに公開」URLのbase部分（"/pub" までの部分）。
 // 各曜日のスプレッドシートで「ウェブに公開」を行ったら、発行されたURLのbase部分をここに設定してください。
 // base が空文字のままの曜日は「未設定」としてボタンが薄く表示され、押しても案内メッセージが出ます。
 const WEEKDAY_SHEETS = {
-  mon: { label: '月曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSuuzGoqdFsLShXUg9YyICioZ7vstoR2ROgVwjjfsCm9UnNS-wDxk0oq-cH9jwHQ/pub' },
-  tue: { label: '火曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSN9Lji5VvCMdzW1JouwKyFCWibRJng0aMaQfctC9tsdTLnBqTockXA7kuA5FsX2w/pub' },
-  wed: { label: '水曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ_bOGWGkq-IeTwuyqBxGyKrfOaC13AcNNP8Rtwcu_NHQakf0FYOHSADToEyoITZQ/pub' },
-  thu: { label: '木曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQaBz8SsSJa4ynKSdCj1Ezbpt_BtuJQmLs0857TmB_3CLu5kVF_Ldtl8m8-_efeAw/pub' },
-  fri: { label: '金曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTcJJ_5JH-m1U0eXzvKy19cE58ZtFneo8HHUvDKmu_pMYknJGvfiXDyc-b9UXNGAQ/pub' },
-  sat: { label: '土曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSnRrZzafi4MG1IavyWU0r2ioJfHhqRarHkjN8tBLbXkaewPKZh85jCuI4mDZL9Rw/pub' }
+  mon: { label: '月曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSXTp55CcBAIBxUc1HNoxEQn0zzJLI9n01GiujPLMACxHnBF0zVBuo5SZ8Ff9kZPBbOKVy3bMDOUboy/pub' },
+  tue: { label: '火曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqKBBjg_u4ithrrKb6Lq0Zmae-PfF2ILCSOSVtN-utH-j_Aktjevwcxt_oXOxVRYz4vPM33SXTay8E/pub' },
+  wed: { label: '水曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQjMmYNY7p8RBD4z6fgiOTPGjb2rs64JAqQiF1QjaFjyBQRCg-vO7XkM5uo2DI1lyFeUjtk0Xf2gdSz/pub' },
+  thu: { label: '木曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS1v8QiOJgpB1YsVPmHwBksvebYJCvNdo11uXHB2HaJdLTxHq1kT1XH_VpQ3J4wwUU5LSFEOFT9JSc4/pub' },
+  fri: { label: '金曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSXQBVWZgknQ5zisRdXJo9FEYj5M5Lahi9l0h8x6of5W3_Ct2xj9Uy1ywl-fI1tzghIF7-SXUOMSttd/pub' },
+  sat: { label: '土曜日', base: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTSVMxbNltCcXTd2hAtC6B3zNVi14Y_yHlAEVE1D0CNZo1IbdJY33j5f_P6LHOWLzWqVJCY34QnGnKE/pub' }
 };
 
 function csvUrl(base, gid){
@@ -1414,7 +1427,7 @@ function loadFromCsv(dayKey){
   // 弁当カレンダー＝「今月」「来月」固定タブ2枚×3種類（通常/子供/シニア）から取得
   const masterNames = Object.keys(MASTER_GIDS);
   const calendarNames = Object.keys(CALENDAR_GIDS_THIS_MONTH);
-  const dailyNames = Object.keys(DAILY_GIDS);
+  const dailyNames = Object.keys(DAILY_GIDS_DEFAULT);
   const masterFetches = masterNames.map(name =>
     fetch(csvUrl(MASTER_CSV_BASE, MASTER_GIDS[name])).then(res=>{
       if(!res.ok) throw new Error(`${name}シート（元データ）の取得に失敗しました（HTTP ${res.status}）`);
@@ -1434,8 +1447,9 @@ function loadFromCsv(dayKey){
       return res.text();
     }).then(text => csvParseToRows(text)).catch(err=>{ console.warn(`${name}（来月）の取得に失敗しました`, err); return null; })
   );
+  const dailyGids = getDailyGids(dayKey);
   const dailyFetches = dailyNames.map(name =>
-    fetch(csvUrl(dayConf.base, DAILY_GIDS[name])).then(res=>{
+    fetch(csvUrl(dayConf.base, dailyGids[name])).then(res=>{
       if(!res.ok) throw new Error(`${name}シートの取得に失敗しました（HTTP ${res.status}）`);
       return res.text();
     }).then(text => csvParseToRows(text))
